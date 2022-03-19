@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"gin-auth/handle"
+	"gin-auth/auth"
 	"gin-auth/persist"
 	"gin-auth/util"
 	"github.com/gin-gonic/gin"
@@ -11,15 +11,16 @@ import (
 
 var log = logrus.New()
 
+var userRepo = persist.NewUserSqliteRepository()
+var postRepo = persist.NewPostSqliteRepository()
+var commentRepo = persist.NewCommentSqliteRepository()
+
+var passEncoder = auth.NewBcryptPasswordEncoder()
+
 func main() {
 	r := gin.Default()
 	port := util.GetIntEnvVar(serverPortEnv, serverDefaultPort)
-	userRepo := persist.NewUserSqliteRepository()
-	_ = persist.NewPostSqliteRepository()
-	_ = persist.NewCommentSqliteRepository()
-	r.GET("/health", handle.Health)
-	r.POST("/user", handle.SaveUser(userRepo))
-	r.GET("/user/:id", handle.FindUser(userRepo))
+	routeHandlerFuncs(r)
 	err := r.Run(fmt.Sprintf(":%d", port))
 	if err != nil {
 		log.Error(err)

@@ -39,23 +39,29 @@ func NewUserSqliteRepository() *UserSqliteRepository {
 	}
 }
 
-func (repo UserSqliteRepository) Save(user *User) *User {
+func (repo *UserSqliteRepository) Save(user *User) *User {
 	repo.db.Create(user)
 	return user
 }
 
-func (repo UserSqliteRepository) Update(user *User) *User {
+func (repo *UserSqliteRepository) Update(user *User) *User {
 	repo.db.Model(user).Updates(user)
 	return user
 }
 
-func (repo UserSqliteRepository) Find(id int) *User {
+func (repo *UserSqliteRepository) Find(id uint) *User {
 	var user User
 	repo.db.First(&user, id)
 	return &user
 }
 
-func (repo UserSqliteRepository) Delete(id int) {
+func (repo *UserSqliteRepository) FindByUsername(username string) *User {
+	var user User
+	repo.db.First(&user, "username = ?", username)
+	return &user
+}
+
+func (repo *UserSqliteRepository) Delete(id uint) {
 	var user User
 	repo.db.Delete(&user, id)
 }
@@ -64,29 +70,29 @@ type PostSqliteRepository struct {
 	db *gorm.DB
 }
 
-func (repo PostSqliteRepository) Save(post *Post) *Post {
+func (repo *PostSqliteRepository) Save(post *Post) *Post {
 	repo.db.Create(post)
 	return post
 }
 
-func (repo PostSqliteRepository) Update(post *Post) *Post {
+func (repo *PostSqliteRepository) Update(post *Post) *Post {
 	repo.db.Model(post).Updates(post)
 	return post
 }
 
-func (repo PostSqliteRepository) Find(id string) *Post {
+func (repo *PostSqliteRepository) Find(id uint) *Post {
 	var post Post
 	repo.db.First(&post, id)
 	return &post
 }
 
-func (repo PostSqliteRepository) FindAllByOwnerId(ownerId int) []*Post {
+func (repo *PostSqliteRepository) FindAllByOwnerId(ownerId uint) []*Post {
 	var posts []*Post
 	repo.db.Find(posts, "ownerId = ?", ownerId)
 	return posts
 }
 
-func (repo PostSqliteRepository) Delete(id string) {
+func (repo *PostSqliteRepository) Delete(id uint) {
 	var post Post
 	repo.db.Delete(&post, id)
 }
@@ -101,35 +107,35 @@ type CommentSqliteRepository struct {
 	db *gorm.DB
 }
 
-func (repo CommentSqliteRepository) Save(comment *Comment) *Comment {
+func (repo *CommentSqliteRepository) Save(comment *Comment) *Comment {
 	repo.db.Create(comment)
 	return comment
 }
 
-func (repo CommentSqliteRepository) Update(comment *Comment) *Comment {
+func (repo *CommentSqliteRepository) Update(comment *Comment) *Comment {
 	repo.db.Model(comment).Updates(comment)
 	return comment
 }
 
-func (repo CommentSqliteRepository) Find(id string) *Comment {
+func (repo *CommentSqliteRepository) Find(id uint) *Comment {
 	var comment Comment
 	repo.db.First(&comment, id)
 	return &comment
 }
 
-func (repo CommentSqliteRepository) FindAllByPostId(postId string) []*Comment {
+func (repo *CommentSqliteRepository) FindAllByPostId(postId uint) []*Comment {
 	var comments []*Comment
 	repo.db.Find(comments, "postId = ?", postId)
 	return comments
 }
 
-func (repo CommentSqliteRepository) FindAllByOwnerId(ownerId int) []*Comment {
+func (repo *CommentSqliteRepository) FindAllByOwnerId(ownerId uint) []*Comment {
 	var comments []*Comment
 	repo.db.Find(comments, "ownerId = ?", ownerId)
 	return comments
 }
 
-func (repo CommentSqliteRepository) Delete(id string) {
+func (repo *CommentSqliteRepository) Delete(id uint) {
 	var comment Comment
 	repo.db.Delete(&comment, id)
 }
