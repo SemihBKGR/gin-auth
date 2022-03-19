@@ -21,7 +21,6 @@ func getDatabase() *gorm.DB {
 	}
 	log.Infoln("Database created successfully")
 	db = newDb
-	// Migrate the schema
 	err = db.AutoMigrate(&User{}, &Role{}, &Post{}, &Comment{})
 	if err != nil {
 		log.Error(err)
@@ -40,58 +39,56 @@ func NewUserSqliteRepository() *UserSqliteRepository {
 	}
 }
 
-func (u UserSqliteRepository) save(user *User) (*User, error) {
-	u.db.Create(user)
-	return user, nil
+func (repo UserSqliteRepository) Save(user *User) *User {
+	repo.db.Create(user)
+	return user
 }
 
-func (u UserSqliteRepository) update(user *User) (*User, error) {
-	u.db.Model(user).Updates(user)
-	return user, nil
+func (repo UserSqliteRepository) Update(user *User) *User {
+	repo.db.Model(user).Updates(user)
+	return user
 }
 
-func (u UserSqliteRepository) find(id int) *User {
+func (repo UserSqliteRepository) Find(id int) *User {
 	var user User
-	u.db.First(&user, id)
+	repo.db.First(&user, id)
 	return &user
 }
 
-func (u UserSqliteRepository) delete(id int) error {
+func (repo UserSqliteRepository) Delete(id int) {
 	var user User
-	u.db.Delete(&user, id)
-	return nil
+	repo.db.Delete(&user, id)
 }
 
 type PostSqliteRepository struct {
 	db *gorm.DB
 }
 
-func (p PostSqliteRepository) save(post *Post) (*Post, error) {
-	p.db.Save(post)
-	return post, nil
+func (repo PostSqliteRepository) Save(post *Post) *Post {
+	repo.db.Create(post)
+	return post
 }
 
-func (p PostSqliteRepository) update(post *Post) (*Post, error) {
-	p.db.Model(post).Updates(post)
-	return post, nil
+func (repo PostSqliteRepository) Update(post *Post) *Post {
+	repo.db.Model(post).Updates(post)
+	return post
 }
 
-func (p PostSqliteRepository) find(id string) (*Post, error) {
+func (repo PostSqliteRepository) Find(id string) *Post {
 	var post Post
-	p.db.First(&post, id)
-	return &post, nil
+	repo.db.First(&post, id)
+	return &post
 }
 
-func (p PostSqliteRepository) findAllByOwnerId(ownerId int) []*Post {
+func (repo PostSqliteRepository) FindAllByOwnerId(ownerId int) []*Post {
 	var posts []*Post
-	p.db.Find(posts, "ownerId = ?", ownerId)
+	repo.db.Find(posts, "ownerId = ?", ownerId)
 	return posts
 }
 
-func (p PostSqliteRepository) delete(id string) error {
+func (repo PostSqliteRepository) Delete(id string) {
 	var post Post
-	p.db.Delete(&post, id)
-	return nil
+	repo.db.Delete(&post, id)
 }
 
 func NewPostSqliteRepository() *PostSqliteRepository {
@@ -104,33 +101,37 @@ type CommentSqliteRepository struct {
 	db *gorm.DB
 }
 
-func (c CommentSqliteRepository) save(comment *Comment) (*Comment, error) {
-	return
+func (repo CommentSqliteRepository) Save(comment *Comment) *Comment {
+	repo.db.Create(comment)
+	return comment
 }
 
-func (c CommentSqliteRepository) update(comment *Comment) (*Comment, error) {
-	//TODO implement me
-	panic("implement me")
+func (repo CommentSqliteRepository) Update(comment *Comment) *Comment {
+	repo.db.Model(comment).Updates(comment)
+	return comment
 }
 
-func (c CommentSqliteRepository) find(id string) (*Comment, error) {
-	//TODO implement me
-	panic("implement me")
+func (repo CommentSqliteRepository) Find(id string) *Comment {
+	var comment Comment
+	repo.db.First(&comment, id)
+	return &comment
 }
 
-func (c CommentSqliteRepository) findAllByPostId(postId string) []*Comment {
-	//TODO implement me
-	panic("implement me")
+func (repo CommentSqliteRepository) FindAllByPostId(postId string) []*Comment {
+	var comments []*Comment
+	repo.db.Find(comments, "postId = ?", postId)
+	return comments
 }
 
-func (c CommentSqliteRepository) findAllByOwnerId(ownerId int) []*Comment {
-	//TODO implement me
-	panic("implement me")
+func (repo CommentSqliteRepository) FindAllByOwnerId(ownerId int) []*Comment {
+	var comments []*Comment
+	repo.db.Find(comments, "ownerId = ?", ownerId)
+	return comments
 }
 
-func (c CommentSqliteRepository) delete(id string) error {
-	//TODO implement me
-	panic("implement me")
+func (repo CommentSqliteRepository) Delete(id string) {
+	var comment Comment
+	repo.db.Delete(&comment, id)
 }
 
 func NewCommentSqliteRepository() *CommentSqliteRepository {
