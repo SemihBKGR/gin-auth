@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"gin-auth/auth"
+	"gin-auth/auth/jwt"
 	"gin-auth/persist"
 	"gin-auth/util"
 	"github.com/gin-gonic/gin"
@@ -16,6 +17,9 @@ var postRepo = persist.NewPostSqliteRepository()
 var commentRepo = persist.NewCommentSqliteRepository()
 
 var passEncoder = auth.NewBcryptPasswordEncoder()
+var loginService = auth.NewDefaultLoginService(userRepo, passEncoder)
+
+var jwtService = jwt.NewJwtService(util.GetEnvVar(jwtSecretEnv, jwtSecretDefault), jwtIssuer)
 
 func main() {
 	r := gin.Default()

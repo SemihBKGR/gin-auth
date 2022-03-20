@@ -3,23 +3,23 @@ package auth
 import "gin-auth/persist"
 
 type LoginService interface {
-	login(username, password string) bool
+	Login(username, password string) (*persist.User, bool)
 }
 
 type DefaultLoginService struct {
 	userRepo    persist.UserRepository
-	passEncoder *PasswordEncoder
+	passEncoder PasswordEncoder
 }
 
-func (s DefaultLoginService) login(username, password string) bool {
+func (s *DefaultLoginService) Login(username, password string) (*persist.User, bool) {
 	user := s.userRepo.FindByUsername(username)
 	if user == nil {
-		return false
+		return user, false
 	}
-	return s.passEncoder.Compare(user.Password, password)
+	return user, s.passEncoder.Compare(user.Password, password)
 }
 
-func NewDefaultLoginService(userRepo persist.UserRepository, passEncoder *PasswordEncoder) *DefaultLoginService {
+func NewDefaultLoginService(userRepo persist.UserRepository, passEncoder PasswordEncoder) LoginService {
 	return &DefaultLoginService{
 		userRepo:    userRepo,
 		passEncoder: passEncoder,

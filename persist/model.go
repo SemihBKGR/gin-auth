@@ -5,7 +5,7 @@ import "gorm.io/gorm"
 type User struct {
 	gorm.Model
 	Username string `json:"username,omitempty"`
-	Password string `json:"password,omitempty"`
+	Password string `json:"password,omitempty" gorm:"size:256"`
 	Roles    []Role `json:"roles,omitempty" gorm:"many2many:user_role_join;"`
 }
 
