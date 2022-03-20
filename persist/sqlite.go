@@ -81,9 +81,9 @@ func (repo *PostSqliteRepository) Find(id uint) *Post {
 	return &post
 }
 
-func (repo *PostSqliteRepository) FindAllByOwnerId(ownerId uint) []*Post {
+func (repo *PostSqliteRepository) FindAllByOwnerUsername(ownerUsername string) []*Post {
 	var posts []*Post
-	repo.db.Find(posts, "ownerId = ?", ownerId)
+	repo.db.Find(posts, "owner_refer = ?", ownerUsername)
 	return posts
 }
 

@@ -11,7 +11,7 @@ type PostRepository interface {
 	Save(post *Post) *Post
 	Update(post *Post) *Post
 	Find(id uint) *Post
-	FindAllByOwnerId(ownerId uint) []*Post
+	FindAllByOwnerUsername(ownerUsername string) []*Post
 	Delete(id uint)
 }
 

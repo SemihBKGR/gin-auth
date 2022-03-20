@@ -163,12 +163,70 @@ func UpdatePost(repo persist.PostRepository) gin.HandlerFunc {
 			wrapErrorAndSend(err, http.StatusInternalServerError, c)
 			return
 		}
+		idStr := c.Param("id")
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+		persistPost := repo.Find(uint(id))
+		if persistPost == nil {
+			wrapErrorAndSend(errors.New("no such post"), http.StatusBadRequest, c)
+			return
+		}
 		username, ok := ExtractUsernameContextData(c)
 		if !ok {
 			c.Status(http.StatusInternalServerError)
 			return
 		}
-		post.OwnerRefer = username
-		c.JSON(http.StatusCreated, repo.Save(post))
+		if persistPost.OwnerRefer != username {
+			wrapErrorAndSend(errors.New("post is not your"), http.StatusForbidden, c)
+			return
+		}
+		persistPost.Content = post.Content
+		c.JSON(http.StatusCreated, repo.Save(persistPost))
+	}
+}
+
+func FindPost(repo persist.PostRepository) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		idStr := c.Param("id")
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+		post := repo.Find(uint(id))
+		c.JSON(http.StatusOK, post)
+	}
+}
+
+func FindPosts(repo persist.PostRepository) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		username, ok := ExtractUsernameContextData(c)
+		if !ok {
+			c.Status(http.StatusInternalServerError)
+			return
+		}
+		posts := repo.FindAllByOwnerUsername(username)
+		c.JSON(http.StatusOK, posts)
+	}
+}
+
+func FindPostsByUsername(repo persist.PostRepository) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		username := c.Param("username")
+		if username == "" {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+		posts := repo.FindAllByOwnerUsername(username)
+		c.JSON(http.StatusOK, posts)
+	}
+}
+
+func DeletePost(repo persist.PostRepository) gin.HandlerFunc {
+	return func(c *gin.Context) {
+
 	}
 }

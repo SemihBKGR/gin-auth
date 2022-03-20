@@ -47,4 +47,29 @@ func routeHandlerFuncs(e *gin.Engine) {
 		handle.SavePost(postRepo),
 	)
 
+	e.PUT("/post/:id",
+		handle.JwtAuthenticationMw(jwtService),
+		handle.UpdatePost(postRepo),
+	)
+
+	e.GET("/post/:id",
+		handle.JwtAuthenticationMw(jwtService),
+		handle.FindPost(postRepo),
+	)
+
+	e.GET("/post",
+		handle.JwtAuthenticationMw(jwtService),
+		handle.FindPosts(postRepo),
+	)
+
+	e.GET("/post/:username",
+		handle.JwtAuthenticationMw(jwtService),
+		handle.FindPostsByUsername(postRepo),
+	)
+
+	e.DELETE("/post/:id",
+		handle.JwtAuthenticationMw(jwtService),
+		handle.FindPostsByUsername(postRepo),
+	)
+
 }
