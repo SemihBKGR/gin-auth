@@ -16,22 +16,41 @@ const jwtIssuer = "gin-auth"
 func routeHandlerFuncs(e *gin.Engine) {
 
 	e.GET("/health",
-		handle.Health)
+		handle.Health,
+	)
 
 	e.POST("/login",
-		handle.Login(loginService, jwtService))
+		handle.Login(loginService, jwtService),
+	)
 
 	e.POST("/user",
-		handle.SaveUser(userRepo, passEncoder))
+		handle.SaveUser(userRepo, passEncoder),
+	)
 
-	e.PUT("/user/:id",
+	e.PUT("/user",
 		handle.JwtAuthenticationMw(jwtService),
-		handle.UpdateUser(userRepo, passEncoder))
+		handle.UpdateUser(userRepo, passEncoder),
+	)
+
+	e.GET("/user",
+		handle.JwtAuthenticationMw(jwtService),
+		handle.FindUser(userRepo),
+	)
 
 	e.GET("/user/:id",
-		handle.FindUser(userRepo))
+		handle.JwtAuthenticationMw(jwtService),
+		handle.FindUserById(userRepo),
+	)
 
 	e.DELETE("/user/:id",
-		handle.DeleteUser(userRepo))
+		handle.JwtAuthenticationMw(jwtService),
+		handle.JwtAuthorizationHasEachRoleMv("ADMIN"),
+		handle.DeleteUser(userRepo),
+	)
+
+	e.POST("/post",
+		handle.JwtAuthenticationMw(jwtService),
+		handle.SavePost(postRepo),
+	)
 
 }

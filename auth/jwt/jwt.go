@@ -17,20 +17,26 @@ type jwtService struct {
 	Issuer string
 }
 
+const AppClaimsId = "ID"
+const AppClaimsUsername = "Username"
+const AppClaimsRoles = "Roles"
+
 type AppClaims struct {
 	*jwt.StandardClaims
+	ID       uint
 	Username string
 	Roles    []string
 }
 
 func (s *jwtService) GenerateToken(user *persist.User) string {
-	claims := AppClaims{
+	claims := &AppClaims{
 		StandardClaims: &jwt.StandardClaims{
 			Subject:   user.Username,
 			ExpiresAt: time.Now().Add(time.Hour * 48).Unix(),
 			Issuer:    s.Issuer,
 			IssuedAt:  time.Now().Unix(),
 		},
+		ID:       user.ID,
 		Username: user.Username,
 		Roles:    rolesToString(user.Roles),
 	}

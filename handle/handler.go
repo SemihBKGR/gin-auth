@@ -7,6 +7,7 @@ import (
 	"gin-auth/auth/jwt"
 	"gin-auth/persist"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 	"io"
 	"net/http"
 	"strconv"
@@ -101,6 +102,17 @@ func UpdateUser(repo persist.UserRepository, encoder auth.PasswordEncoder) gin.H
 
 func FindUser(repo persist.UserRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		username, ok := c.Get(ctxDataUsernameKey)
+		if !ok {
+			c.Status(http.StatusInternalServerError)
+			return
+		}
+		c.JSON(http.StatusOK, repo.FindByUsername(username.(string)))
+	}
+}
+
+func FindUserById(repo persist.UserRepository) gin.HandlerFunc {
+	return func(c *gin.Context) {
 		idParam := c.Param("id")
 		id, err := strconv.Atoi(idParam)
 		if err != nil {
@@ -136,6 +148,16 @@ func SavePost(repo persist.PostRepository) gin.HandlerFunc {
 		if err != nil {
 			wrapErrorAndSend(err, http.StatusInternalServerError, c)
 			return
+		}
+		id, ok := c.Get(ctxDataIdKey)
+		if !ok {
+			c.Status(http.StatusInternalServerError)
+			return
+		}
+		post.Owner = persist.User{
+			Model: gorm.Model{
+				ID: id.(uint),
+			},
 		}
 		c.JSON(http.StatusCreated, repo.Save(post))
 	}
