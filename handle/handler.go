@@ -35,12 +35,8 @@ func Login(loginService auth.LoginService, jwtService jwt.JwtService) gin.Handle
 		user, ok := loginService.Login(credentials.Username, credentials.Password)
 		if user != nil {
 			if ok {
-				token := jwtService.GenerateToken(user)
-				c.Status(http.StatusAccepted)
-				_, err = c.Writer.Write([]byte(token))
-				if err != nil {
-					wrapErrorAndSend(err, http.StatusInternalServerError, c)
-				}
+				token := authTokenPrefix + jwtService.GenerateToken(user)
+				c.Data(http.StatusAccepted, "text/plain", []byte(token))
 			} else {
 				wrapErrorAndSend(errors.New("wrong password"), http.StatusUnauthorized, c)
 			}
@@ -125,5 +121,22 @@ func DeleteUser(repo persist.UserRepository) gin.HandlerFunc {
 		}
 		repo.Delete(uint(id))
 		c.Status(http.StatusNoContent)
+	}
+}
+
+func SavePost(repo persist.PostRepository) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		body, err := io.ReadAll(c.Request.Body)
+		if err != nil {
+			wrapErrorAndSend(err, http.StatusBadRequest, c)
+			return
+		}
+		var post *persist.Post
+		err = json.Unmarshal(body, &post)
+		if err != nil {
+			wrapErrorAndSend(err, http.StatusInternalServerError, c)
+			return
+		}
+		c.JSON(http.StatusCreated, repo.Save(post))
 	}
 }

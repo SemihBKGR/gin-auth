@@ -17,12 +17,22 @@ type jwtService struct {
 	Issuer string
 }
 
+type AppClaims struct {
+	*jwt.StandardClaims
+	Username string
+	Roles    []string
+}
+
 func (s *jwtService) GenerateToken(user *persist.User) string {
-	claims := jwt.StandardClaims{
-		Subject:   user.Username,
-		ExpiresAt: time.Now().Add(time.Hour * 48).Unix(),
-		Issuer:    s.Issuer,
-		IssuedAt:  time.Now().Unix(),
+	claims := AppClaims{
+		StandardClaims: &jwt.StandardClaims{
+			Subject:   user.Username,
+			ExpiresAt: time.Now().Add(time.Hour * 48).Unix(),
+			Issuer:    s.Issuer,
+			IssuedAt:  time.Now().Unix(),
+		},
+		Username: user.Username,
+		Roles:    rolesToString(user.Roles),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenStr, err := token.SignedString(s.Secret)
@@ -46,4 +56,12 @@ func NewJwtService(secret, issuer string) JwtService {
 		Secret: []byte(secret),
 		Issuer: issuer,
 	}
+}
+
+func rolesToString(roles []persist.Role) []string {
+	rolesStr := make([]string, len(roles))
+	for i, role := range roles {
+		rolesStr[i] = role.Name
+	}
+	return rolesStr
 }

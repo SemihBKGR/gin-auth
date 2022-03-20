@@ -14,10 +14,24 @@ const jwtSecretDefault = "s3cr3t"
 const jwtIssuer = "gin-auth"
 
 func routeHandlerFuncs(e *gin.Engine) {
-	e.GET("/health", handle.Health)
-	e.POST("/login", handle.Login(loginService, jwtService))
-	e.POST("/user", handle.SaveUser(userRepo, passEncoder))
-	e.PUT("/user/:id", handle.UpdateUser(userRepo, passEncoder))
-	e.GET("/user/:id", handle.FindUser(userRepo))
-	e.DELETE("/user/:id", handle.DeleteUser(userRepo))
+
+	e.GET("/health",
+		handle.Health)
+
+	e.POST("/login",
+		handle.Login(loginService, jwtService))
+
+	e.POST("/user",
+		handle.SaveUser(userRepo, passEncoder))
+
+	e.PUT("/user/:id",
+		handle.JwtAuthenticationMw(jwtService),
+		handle.UpdateUser(userRepo, passEncoder))
+
+	e.GET("/user/:id",
+		handle.FindUser(userRepo))
+
+	e.DELETE("/user/:id",
+		handle.DeleteUser(userRepo))
+
 }
