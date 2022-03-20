@@ -61,11 +61,6 @@ func (repo *UserSqliteRepository) FindByUsername(username string) *User {
 	return &user
 }
 
-func (repo *UserSqliteRepository) Delete(id uint) {
-	var user User
-	repo.db.Delete(&user, id)
-}
-
 type PostSqliteRepository struct {
 	db *gorm.DB
 }

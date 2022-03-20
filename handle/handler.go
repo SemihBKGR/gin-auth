@@ -7,7 +7,6 @@ import (
 	"gin-auth/auth/jwt"
 	"gin-auth/persist"
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 	"io"
 	"net/http"
 	"strconv"
@@ -83,13 +82,18 @@ func UpdateUser(repo persist.UserRepository, encoder auth.PasswordEncoder) gin.H
 			wrapErrorAndSend(err, http.StatusInternalServerError, c)
 			return
 		}
-		idParam := c.Param("id")
-		id, err := strconv.Atoi(idParam)
-		if err != nil {
-			wrapErrorAndSend(err, http.StatusBadRequest, c)
+		id, ok := ExtractIdContextData(c)
+		if !ok {
+			wrapErrorAndSend(errors.New("context data does not contains id"), http.StatusInternalServerError, c)
 			return
 		}
-		user.ID = uint(id)
+		user.ID = id
+		username, ok := ExtractUsernameContextData(c)
+		if !ok {
+			wrapErrorAndSend(errors.New("context data does not contains username"), http.StatusInternalServerError, c)
+			return
+		}
+		user.Username = username
 		pass, err := encoder.Encode(user.Password)
 		if err != nil {
 			wrapErrorAndSend(err, http.StatusBadRequest, c)
@@ -123,19 +127,6 @@ func FindUserById(repo persist.UserRepository) gin.HandlerFunc {
 	}
 }
 
-func DeleteUser(repo persist.UserRepository) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		idParam := c.Param("id")
-		id, err := strconv.Atoi(idParam)
-		if err != nil {
-			wrapErrorAndSend(err, http.StatusBadRequest, c)
-			return
-		}
-		repo.Delete(uint(id))
-		c.Status(http.StatusNoContent)
-	}
-}
-
 func SavePost(repo persist.PostRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		body, err := io.ReadAll(c.Request.Body)
@@ -149,16 +140,35 @@ func SavePost(repo persist.PostRepository) gin.HandlerFunc {
 			wrapErrorAndSend(err, http.StatusInternalServerError, c)
 			return
 		}
-		id, ok := c.Get(ctxDataIdKey)
+		username, ok := ExtractUsernameContextData(c)
 		if !ok {
 			c.Status(http.StatusInternalServerError)
 			return
 		}
-		post.Owner = persist.User{
-			Model: gorm.Model{
-				ID: id.(uint),
-			},
+		post.OwnerRefer = username
+		c.JSON(http.StatusCreated, repo.Save(post))
+	}
+}
+
+func UpdatePost(repo persist.PostRepository) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		body, err := io.ReadAll(c.Request.Body)
+		if err != nil {
+			wrapErrorAndSend(err, http.StatusBadRequest, c)
+			return
 		}
+		var post *persist.Post
+		err = json.Unmarshal(body, &post)
+		if err != nil {
+			wrapErrorAndSend(err, http.StatusInternalServerError, c)
+			return
+		}
+		username, ok := ExtractUsernameContextData(c)
+		if !ok {
+			c.Status(http.StatusInternalServerError)
+			return
+		}
+		post.OwnerRefer = username
 		c.JSON(http.StatusCreated, repo.Save(post))
 	}
 }

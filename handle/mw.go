@@ -1,7 +1,6 @@
 package handle
 
 import (
-	"fmt"
 	"gin-auth/auth/jwt"
 	jwtlib "github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
@@ -12,6 +11,7 @@ import (
 const authHeader = "Authorization"
 const authTokenPrefix = "Bearer "
 const ctxDataTokenKey = "token"
+const ctxDataClaimsKey = "claims"
 const ctxDataIdKey = "id"
 const ctxDataUsernameKey = "username"
 const ctxDataRolesKey = "roles"
@@ -32,8 +32,8 @@ func JwtAuthenticationMw(service jwt.JwtService) gin.HandlerFunc {
 			return
 		}
 		c.Set(ctxDataTokenKey, token)
-		fmt.Printf("%T", token.Claims)
 		claims := token.Claims.(jwtlib.MapClaims)
+		c.Set(ctxDataClaimsKey, claims)
 		c.Set(ctxDataIdKey, claims[jwt.AppClaimsId])
 		c.Set(ctxDataUsernameKey, claims[jwt.AppClaimsUsername])
 		c.Set(ctxDataRolesKey, claims[jwt.AppClaimsRoles])
@@ -42,13 +42,13 @@ func JwtAuthenticationMw(service jwt.JwtService) gin.HandlerFunc {
 
 func JwtAuthorizationHasAnyRoleMv(roles ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		existingRoles, ok := c.Get(ctxDataTokenKey)
+		existingRoles, ok := ExtractRolesContextData(c)
 		if !ok {
 			c.Status(http.StatusForbidden)
 			c.Abort()
 			return
 		}
-		if !roleContainsAny(existingRoles.([]string), roles...) {
+		if !roleContainsAny(existingRoles, roles...) {
 			c.Status(http.StatusForbidden)
 			c.Abort()
 		}
@@ -57,13 +57,13 @@ func JwtAuthorizationHasAnyRoleMv(roles ...string) gin.HandlerFunc {
 
 func JwtAuthorizationHasEachRoleMv(roles ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		existingRoles, ok := c.Get(ctxDataTokenKey)
+		existingRoles, ok := ExtractRolesContextData(c)
 		if !ok {
 			c.Status(http.StatusForbidden)
 			c.Abort()
 			return
 		}
-		if !roleContainsEach(existingRoles.([]string), roles...) {
+		if !roleContainsEach(existingRoles, roles...) {
 			c.Status(http.StatusForbidden)
 			c.Abort()
 		}
@@ -95,4 +95,40 @@ func roleContains(existingRoles []string, role string) bool {
 		}
 	}
 	return false
+}
+
+func ExtractIdContextData(c *gin.Context) (uint, bool) {
+	IdData, ok := c.Get(ctxDataIdKey)
+	if !ok {
+		return 0, false
+	}
+	id, ok := IdData.(float64)
+	if !ok {
+		return 0, false
+	}
+	return uint(id), true
+}
+
+func ExtractUsernameContextData(c *gin.Context) (string, bool) {
+	usernameData, ok := c.Get(ctxDataUsernameKey)
+	if !ok {
+		return "", false
+	}
+	username, ok := usernameData.(string)
+	if !ok {
+		return "", false
+	}
+	return username, true
+}
+
+func ExtractRolesContextData(c *gin.Context) ([]string, bool) {
+	rolesData, ok := c.Get(ctxDataRolesKey)
+	if !ok {
+		return nil, false
+	}
+	roles, ok := rolesData.([]string)
+	if !ok {
+		return nil, false
+	}
+	return roles, true
 }

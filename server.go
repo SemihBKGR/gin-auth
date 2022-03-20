@@ -42,12 +42,6 @@ func routeHandlerFuncs(e *gin.Engine) {
 		handle.FindUserById(userRepo),
 	)
 
-	e.DELETE("/user/:id",
-		handle.JwtAuthenticationMw(jwtService),
-		handle.JwtAuthorizationHasEachRoleMv("ADMIN"),
-		handle.DeleteUser(userRepo),
-	)
-
 	e.POST("/post",
 		handle.JwtAuthenticationMw(jwtService),
 		handle.SavePost(postRepo),

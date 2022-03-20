@@ -4,9 +4,11 @@ import "gorm.io/gorm"
 
 type User struct {
 	gorm.Model
-	Username string `json:"username,omitempty" gorm:"unique;not null"`
-	Password string `json:"password,omitempty" gorm:"size:256;not null"`
-	Roles    []Role `json:"roles,omitempty" gorm:"many2many:user_role_join"`
+	Username string    `json:"username,omitempty" gorm:"unique;not null"`
+	Password string    `json:"password,omitempty" gorm:"size:256;not null"`
+	Roles    []Role    `json:"roles,omitempty" gorm:"many2many:user_role_join"`
+	Posts    []Post    `json:"posts,omitempty" gorm:"foreignKey:OwnerRefer;references:Username"`
+	Comments []Comment `json:"comments,omitempty" gorm:"foreignKey:OwnerRefer;references:Username"`
 }
 
 type Role struct {
@@ -16,13 +18,14 @@ type Role struct {
 
 type Post struct {
 	gorm.Model
-	Content string `json:"content,omitempty" gorm:"non null"`
-	Owner   User   `json:"owner_id,omitempty" gorm:"foreignKey:owner_id;unique"`
+	Content    string    `json:"content,omitempty" gorm:"non null"`
+	OwnerRefer string    `json:"owner_id,omitempty"`
+	Comments   []Comment `json:"comments,omitempty" gorm:"foreignKey:PostRefer"`
 }
 
 type Comment struct {
 	gorm.Model
-	Content string `json:"content,omitempty" gorm:"not null"`
-	Owner   User   `json:"owner_id,omitempty" gorm:"foreignKey:owner_id"`
-	Post    Post   `json:"post_id,omitempty" gorm:"foreignKey:post_id"`
+	Content    string `json:"content,omitempty" gorm:"not null"`
+	OwnerRefer string `json:"owner_id,omitempty"`
+	PostRefer  uint   `json:"post_id,omitempty"`
 }
