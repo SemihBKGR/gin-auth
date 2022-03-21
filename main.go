@@ -8,6 +8,7 @@ import (
 	"gin-auth/util"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
+	"gorm.io/gorm"
 )
 
 var log = logrus.New()
@@ -20,6 +21,12 @@ var passEncoder = auth.NewBcryptPasswordEncoder()
 var loginService = auth.NewDefaultLoginService(userRepo, passEncoder)
 
 var jwtService = jwt.NewJwtService(util.GetEnvVar(jwtSecretEnv, jwtSecretDefault), jwtIssuer)
+
+func init() {
+	persist.InitDatabase(func(db *gorm.DB) {
+		db.Exec(auth.InsertRolesQuery)
+	})
+}
 
 func main() {
 	r := gin.Default()

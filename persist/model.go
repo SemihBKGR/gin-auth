@@ -5,7 +5,7 @@ import "gorm.io/gorm"
 type User struct {
 	gorm.Model
 	Username string    `json:"username,omitempty" gorm:"unique;not null"`
-	Password string    `json:"-" gorm:"size:256;not null"`
+	Password string    `json:"password" gorm:"size:256;not null"`
 	Roles    []Role    `json:"roles,omitempty" gorm:"many2many:user_role_join"`
 	Posts    []Post    `json:"posts,omitempty" gorm:"foreignKey:OwnerRefer;references:Username"`
 	Comments []Comment `json:"comments,omitempty" gorm:"foreignKey:OwnerRefer;references:Username"`

@@ -126,9 +126,13 @@ func ExtractRolesContextData(c *gin.Context) ([]string, bool) {
 	if !ok {
 		return nil, false
 	}
-	roles, ok := rolesData.([]string)
+	rolesInterface, ok := rolesData.([]interface{})
 	if !ok {
 		return nil, false
+	}
+	roles := make([]string, len(rolesInterface))
+	for i, role := range rolesInterface {
+		roles[i] = role.(string)
 	}
 	return roles, true
 }

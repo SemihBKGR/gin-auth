@@ -33,16 +33,12 @@ func Login(loginService auth.LoginService, jwtService jwt.JwtService) gin.Handle
 			return
 		}
 		user, ok := loginService.Login(credentials.Username, credentials.Password)
-		if user != nil {
-			if ok {
-				token := authTokenPrefix + jwtService.GenerateToken(user)
-				c.Data(http.StatusAccepted, "text/plain", []byte(token))
-			} else {
-				wrapErrorAndSend(errors.New("wrong password"), http.StatusUnauthorized, c)
-			}
-		} else {
-			wrapErrorAndSend(errors.New("no such user"), http.StatusUnauthorized, c)
+		if !ok {
+			wrapErrorAndSend(errors.New("incorrect credentials"), http.StatusUnauthorized, c)
+			return
 		}
+		token := authTokenPrefix + jwtService.GenerateToken(user)
+		c.Data(http.StatusAccepted, "text/plain", []byte(token))
 	}
 }
 
@@ -65,7 +61,8 @@ func SaveUser(repo persist.UserRepository, encoder auth.PasswordEncoder) gin.Han
 			return
 		}
 		user.Password = pass
-		c.JSON(http.StatusCreated, repo.Save(&user))
+		persistUser := repo.Save(&user)
+		c.JSON(http.StatusCreated, hideUserConfidentialFields(persistUser))
 	}
 }
 
@@ -87,31 +84,27 @@ func UpdateUser(repo persist.UserRepository, encoder auth.PasswordEncoder) gin.H
 			wrapErrorAndSend(errors.New("context data does not contains id"), http.StatusInternalServerError, c)
 			return
 		}
-		user.ID = id
-		username, ok := ExtractUsernameContextData(c)
-		if !ok {
-			wrapErrorAndSend(errors.New("context data does not contains username"), http.StatusInternalServerError, c)
-			return
-		}
-		user.Username = username
+		persistUser := repo.Find(id)
 		pass, err := encoder.Encode(user.Password)
 		if err != nil {
 			wrapErrorAndSend(err, http.StatusBadRequest, c)
 			return
 		}
-		user.Password = pass
-		c.JSON(http.StatusAccepted, repo.Update(&user))
+		persistUser.Password = pass
+		updateUser := repo.Update(persistUser)
+		c.JSON(http.StatusAccepted, hideUserConfidentialFields(updateUser))
 	}
 }
 
 func FindUser(repo persist.UserRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		username, ok := c.Get(ctxDataUsernameKey)
+		username, ok := ExtractUsernameContextData(c)
 		if !ok {
 			c.Status(http.StatusInternalServerError)
 			return
 		}
-		c.JSON(http.StatusOK, repo.FindByUsername(username.(string)))
+		user := repo.FindByUsername(username)
+		c.JSON(http.StatusOK, hideUserConfidentialFields(user))
 	}
 }
 
@@ -201,7 +194,7 @@ func FindPost(repo persist.PostRepository) gin.HandlerFunc {
 	}
 }
 
-func FindPosts(repo persist.PostRepository) gin.HandlerFunc {
+func FindAllPosts(repo persist.PostRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		username, ok := ExtractUsernameContextData(c)
 		if !ok {
@@ -213,7 +206,7 @@ func FindPosts(repo persist.PostRepository) gin.HandlerFunc {
 	}
 }
 
-func FindPostsByUsername(repo persist.PostRepository) gin.HandlerFunc {
+func FindAllPostsByUsername(repo persist.PostRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		username := c.Param("username")
 		if username == "" {
@@ -227,6 +220,47 @@ func FindPostsByUsername(repo persist.PostRepository) gin.HandlerFunc {
 
 func DeletePost(repo persist.PostRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
-
+		idStr := c.Param("id")
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+		persistPost := repo.Find(uint(id))
+		if persistPost == nil {
+			wrapErrorAndSend(errors.New("no such post"), http.StatusBadRequest, c)
+			return
+		}
+		username, ok := ExtractUsernameContextData(c)
+		if !ok {
+			c.Status(http.StatusInternalServerError)
+			return
+		}
+		if persistPost.OwnerRefer != username {
+			wrapErrorAndSend(errors.New("post is not your"), http.StatusForbidden, c)
+			return
+		}
+		repo.Delete(uint(id))
+		c.Status(http.StatusAccepted)
 	}
+}
+
+func DeletePostForcibly(repo persist.PostRepository) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		idStr := c.Param("id")
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+		repo.Delete(uint(id))
+		c.Status(http.StatusAccepted)
+	}
+}
+
+const confidentialFieldValue = "<secret>"
+
+func hideUserConfidentialFields(user *persist.User) *persist.User {
+	user.Password = confidentialFieldValue
+	return user
 }

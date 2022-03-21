@@ -1,6 +1,7 @@
 package main
 
 import (
+	"gin-auth/auth"
 	"gin-auth/handle"
 	"github.com/gin-gonic/gin"
 )
@@ -57,19 +58,25 @@ func routeHandlerFuncs(e *gin.Engine) {
 		handle.FindPost(postRepo),
 	)
 
-	e.GET("/post",
+	e.GET("/post/list",
 		handle.JwtAuthenticationMw(jwtService),
-		handle.FindPosts(postRepo),
+		handle.FindAllPosts(postRepo),
 	)
 
-	e.GET("/post/:username",
+	e.GET("/post/list/:username",
 		handle.JwtAuthenticationMw(jwtService),
-		handle.FindPostsByUsername(postRepo),
+		handle.FindAllPostsByUsername(postRepo),
 	)
 
 	e.DELETE("/post/:id",
 		handle.JwtAuthenticationMw(jwtService),
-		handle.FindPostsByUsername(postRepo),
+		handle.DeletePost(postRepo),
+	)
+
+	e.DELETE("/post/force/:id",
+		handle.JwtAuthenticationMw(jwtService),
+		handle.JwtAuthorizationHasAnyRoleMv(auth.RoleAdmin, auth.RoleManager),
+		handle.DeletePostForcibly(postRepo),
 	)
 
 }

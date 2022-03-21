@@ -11,8 +11,11 @@ const dbName = "test.db"
 var log = logrus.New()
 var db *gorm.DB
 
-func getDatabase() *gorm.DB {
+func InitDatabase(callback func(db *gorm.DB)) *gorm.DB {
 	if db != nil {
+		if callback != nil {
+			callback(db)
+		}
 		return db
 	}
 	newDb, err := gorm.Open(sqlite.Open(dbName), &gorm.Config{})
@@ -26,6 +29,9 @@ func getDatabase() *gorm.DB {
 		log.Error(err)
 	}
 	log.Infoln("Database schema is ready")
+	if callback != nil {
+		callback(db)
+	}
 	return db
 }
 
@@ -35,7 +41,7 @@ type UserSqliteRepository struct {
 
 func NewUserSqliteRepository() *UserSqliteRepository {
 	return &UserSqliteRepository{
-		db: getDatabase(),
+		db: InitDatabase(nil),
 	}
 }
 
@@ -51,13 +57,13 @@ func (repo *UserSqliteRepository) Update(user *User) *User {
 
 func (repo *UserSqliteRepository) Find(id uint) *User {
 	var user User
-	repo.db.First(&user, id)
+	repo.db.Preload("Roles").First(&user, id)
 	return &user
 }
 
 func (repo *UserSqliteRepository) FindByUsername(username string) *User {
 	var user User
-	repo.db.First(&user, "username = ?", username)
+	repo.db.Preload("Roles").First(&user, "username = ?", username)
 	return &user
 }
 
@@ -83,7 +89,7 @@ func (repo *PostSqliteRepository) Find(id uint) *Post {
 
 func (repo *PostSqliteRepository) FindAllByOwnerUsername(ownerUsername string) []*Post {
 	var posts []*Post
-	repo.db.Find(posts, "owner_refer = ?", ownerUsername)
+	repo.db.Find(&posts, "owner_refer = ?", ownerUsername)
 	return posts
 }
 
@@ -94,7 +100,7 @@ func (repo *PostSqliteRepository) Delete(id uint) {
 
 func NewPostSqliteRepository() *PostSqliteRepository {
 	return &PostSqliteRepository{
-		db: getDatabase(),
+		db: InitDatabase(nil),
 	}
 }
 
@@ -137,6 +143,6 @@ func (repo *CommentSqliteRepository) Delete(id uint) {
 
 func NewCommentSqliteRepository() *CommentSqliteRepository {
 	return &CommentSqliteRepository{
-		db: getDatabase(),
+		db: InitDatabase(nil),
 	}
 }
