@@ -19,7 +19,6 @@ type CommentRepository interface {
 	Save(comment *Comment) *Comment
 	Update(comment *Comment) *Comment
 	Find(id uint) *Comment
-	FindAllByPostId(postId uint) []*Comment
-	FindAllByOwnerId(ownerId uint) []*Comment
+	FindAllByOwnerUsername(ownerUsername string) []*Comment
 	Delete(id uint)
 }

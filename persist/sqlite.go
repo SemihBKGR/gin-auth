@@ -130,9 +130,9 @@ func (repo *CommentSqliteRepository) FindAllByPostId(postId uint) []*Comment {
 	return comments
 }
 
-func (repo *CommentSqliteRepository) FindAllByOwnerId(ownerId uint) []*Comment {
+func (repo *CommentSqliteRepository) FindAllByOwnerUsername(ownerUsername string) []*Comment {
 	var comments []*Comment
-	repo.db.Find(comments, "ownerId = ?", ownerId)
+	repo.db.Find(comments, "owner_refer = ?", ownerUsername)
 	return comments
 }
 

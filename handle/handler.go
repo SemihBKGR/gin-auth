@@ -258,6 +258,157 @@ func DeletePostForcibly(repo persist.PostRepository) gin.HandlerFunc {
 	}
 }
 
+func SaveComment(repo persist.CommentRepository) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		body, err := io.ReadAll(c.Request.Body)
+		if err != nil {
+			wrapErrorAndSend(err, http.StatusBadRequest, c)
+			return
+		}
+		var comment *persist.Comment
+		err = json.Unmarshal(body, &comment)
+		if err != nil {
+			wrapErrorAndSend(err, http.StatusInternalServerError, c)
+			return
+		}
+		username, ok := ExtractUsernameContextData(c)
+		if !ok {
+			c.Status(http.StatusInternalServerError)
+			return
+		}
+		comment.OwnerRefer = username
+		c.JSON(http.StatusOK, repo.Save(comment))
+	}
+}
+
+func UpdateComment(repo persist.CommentRepository) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		body, err := io.ReadAll(c.Request.Body)
+		if err != nil {
+			wrapErrorAndSend(err, http.StatusBadRequest, c)
+			return
+		}
+		var comment *persist.Comment
+		err = json.Unmarshal(body, &comment)
+		if err != nil {
+			wrapErrorAndSend(err, http.StatusInternalServerError, c)
+			return
+		}
+		idStr := c.Param("id")
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+		persistComment := repo.Find(uint(id))
+		if persistComment == nil {
+			wrapErrorAndSend(errors.New("no such comment"), http.StatusBadRequest, c)
+			return
+		}
+		username, ok := ExtractUsernameContextData(c)
+		if !ok {
+			c.Status(http.StatusInternalServerError)
+			return
+		}
+		if username != persistComment.OwnerRefer {
+			wrapErrorAndSend(errors.New("comment is not your"), http.StatusForbidden, c)
+			return
+		}
+		persistComment.Content = comment.Content
+		c.JSON(http.StatusOK, repo.Save(persistComment))
+	}
+}
+
+func UpdateCommentForcibly(repo persist.CommentRepository) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		body, err := io.ReadAll(c.Request.Body)
+		if err != nil {
+			wrapErrorAndSend(err, http.StatusBadRequest, c)
+			return
+		}
+		var comment *persist.Comment
+		err = json.Unmarshal(body, &comment)
+		if err != nil {
+			wrapErrorAndSend(err, http.StatusInternalServerError, c)
+			return
+		}
+		idStr := c.Param("id")
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+		persistComment := repo.Find(uint(id))
+		if persistComment == nil {
+			wrapErrorAndSend(errors.New("no such comment"), http.StatusBadRequest, c)
+			return
+		}
+		username, ok := ExtractUsernameContextData(c)
+		if !ok {
+			c.Status(http.StatusInternalServerError)
+			return
+		}
+		if username != persistComment.OwnerRefer {
+			wrapErrorAndSend(errors.New("comment is not your"), http.StatusForbidden, c)
+			return
+		}
+		persistComment.Content = comment.Content
+		c.JSON(http.StatusOK, repo.Save(persistComment))
+	}
+}
+
+func FindComments(repo persist.CommentRepository) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		username, ok := ExtractUsernameContextData(c)
+		if !ok {
+			c.Status(http.StatusInternalServerError)
+			return
+		}
+		comments := repo.FindAllByOwnerUsername(username)
+		c.JSON(http.StatusOK, comments)
+	}
+}
+
+func DeleteComment(repo persist.CommentRepository) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		idStr := c.Param("id")
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+		persistComment := repo.Find(uint(id))
+		if persistComment == nil {
+			wrapErrorAndSend(errors.New("no such persistComment"), http.StatusBadRequest, c)
+			return
+		}
+		username, ok := ExtractUsernameContextData(c)
+		if !ok {
+			c.Status(http.StatusInternalServerError)
+			return
+		}
+		if username != persistComment.OwnerRefer {
+			wrapErrorAndSend(errors.New("comment is not your"), http.StatusForbidden, c)
+			return
+		}
+		repo.Delete(uint(id))
+		c.Status(http.StatusAccepted)
+	}
+}
+
+func DeleteCommentForcibly(repo persist.CommentRepository) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		idStr := c.Param("id")
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+		repo.Delete(uint(id))
+		c.Status(http.StatusAccepted)
+	}
+}
+
 const confidentialFieldValue = "<secret>"
 
 func hideUserConfidentialFields(user *persist.User) *persist.User {
