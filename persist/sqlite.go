@@ -67,6 +67,14 @@ func (repo *UserSqliteRepository) FindByUsername(username string) *User {
 	return &user
 }
 
+func (repo *UserSqliteRepository) AddRole(username, role string) {
+	repo.db.Exec(generateInsertUserRoleQuery(username, role))
+}
+
+func (repo *UserSqliteRepository) RemoveRole(username, role string) {
+	repo.db.Exec(generateDeleteUserRoleQuery(username, role))
+}
+
 type PostSqliteRepository struct {
 	db *gorm.DB
 }

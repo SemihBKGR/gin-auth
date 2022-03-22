@@ -5,6 +5,8 @@ type UserRepository interface {
 	Update(user *User) *User
 	Find(id uint) *User
 	FindByUsername(username string) *User
+	AddRole(username, role string)
+	RemoveRole(username, role string)
 }
 
 type PostRepository interface {

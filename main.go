@@ -25,7 +25,10 @@ var jwtService = jwt.NewJwtService(util.GetEnvVar(jwtSecretEnv, jwtSecretDefault
 func init() {
 	persist.InitDatabase(func(db *gorm.DB) {
 		db.Exec(auth.InsertRolesQuery)
+		db.Exec(auth.GenerateInsertAdminQuery(passEncoder))
+		db.Exec(auth.InsertAdminRoleQuery)
 	})
+	log.Infof("Admin username: %s, password: %s\n", auth.AdminUsername, auth.AdminPassword)
 }
 
 func main() {

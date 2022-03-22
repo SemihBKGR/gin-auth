@@ -181,6 +181,44 @@ func UpdatePost(repo persist.PostRepository) gin.HandlerFunc {
 	}
 }
 
+func UpdatePostForcibly(repo persist.PostRepository) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		body, err := io.ReadAll(c.Request.Body)
+		if err != nil {
+			wrapErrorAndSend(err, http.StatusBadRequest, c)
+			return
+		}
+		var post *persist.Post
+		err = json.Unmarshal(body, &post)
+		if err != nil {
+			wrapErrorAndSend(err, http.StatusInternalServerError, c)
+			return
+		}
+		idStr := c.Param("id")
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+		persistPost := repo.Find(uint(id))
+		if persistPost == nil {
+			wrapErrorAndSend(errors.New("no such post"), http.StatusBadRequest, c)
+			return
+		}
+		username, ok := ExtractUsernameContextData(c)
+		if !ok {
+			c.Status(http.StatusInternalServerError)
+			return
+		}
+		if persistPost.OwnerRefer != username {
+			wrapErrorAndSend(errors.New("post is not your"), http.StatusForbidden, c)
+			return
+		}
+		persistPost.Content = post.Content
+		c.JSON(http.StatusCreated, repo.Save(persistPost))
+	}
+}
+
 func FindPost(repo persist.PostRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		idStr := c.Param("id")
@@ -406,6 +444,54 @@ func DeleteCommentForcibly(repo persist.CommentRepository) gin.HandlerFunc {
 		}
 		repo.Delete(uint(id))
 		c.Status(http.StatusAccepted)
+	}
+}
+
+func AddRole(repo persist.UserRepository) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		username := c.Param("username")
+		if username == "" {
+			c.Status(http.StatusInternalServerError)
+			return
+		}
+		body, err := io.ReadAll(c.Request.Body)
+		if err != nil {
+			wrapErrorAndSend(err, http.StatusBadRequest, c)
+			return
+		}
+		var role struct {
+			Name string
+		}
+		err = json.Unmarshal(body, &role)
+		if err != nil {
+			wrapErrorAndSend(err, http.StatusInternalServerError, c)
+			return
+		}
+		repo.AddRole(username, role.Name)
+	}
+}
+
+func RemoveRole(repo persist.UserRepository) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		username := c.Param("username")
+		if username == "" {
+			c.Status(http.StatusInternalServerError)
+			return
+		}
+		body, err := io.ReadAll(c.Request.Body)
+		if err != nil {
+			wrapErrorAndSend(err, http.StatusBadRequest, c)
+			return
+		}
+		var role struct {
+			Name string
+		}
+		err = json.Unmarshal(body, &role)
+		if err != nil {
+			wrapErrorAndSend(err, http.StatusInternalServerError, c)
+			return
+		}
+		repo.RemoveRole(username, role.Name)
 	}
 }
 

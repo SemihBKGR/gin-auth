@@ -53,6 +53,12 @@ func routeHandlerFuncs(e *gin.Engine) {
 		handle.UpdatePost(postRepo),
 	)
 
+	e.PUT("/post/force/:id",
+		handle.JwtAuthenticationMw(jwtService),
+		handle.JwtAuthorizationHasAnyRoleMv(auth.RoleAdmin, auth.RoleManager),
+		handle.UpdatePostForcibly(postRepo),
+	)
+
 	e.GET("/post/:id",
 		handle.JwtAuthenticationMw(jwtService),
 		handle.FindPost(postRepo),
@@ -91,7 +97,7 @@ func routeHandlerFuncs(e *gin.Engine) {
 
 	e.PUT("/comment/force/:id",
 		handle.JwtAuthenticationMw(jwtService),
-		handle.JwtAuthorizationHasAnyRoleMv(auth.RoleAdmin, auth.RoleManager),
+		handle.JwtAuthorizationHasAnyRoleMv(auth.RoleAdmin, auth.RoleManager, auth.RoleModerator),
 		handle.UpdateCommentForcibly(commentRepo),
 	)
 
@@ -107,8 +113,20 @@ func routeHandlerFuncs(e *gin.Engine) {
 
 	e.DELETE("/comment/force/:id",
 		handle.JwtAuthenticationMw(jwtService),
-		handle.JwtAuthorizationHasAnyRoleMv(auth.RoleAdmin, auth.RoleManager),
+		handle.JwtAuthorizationHasAnyRoleMv(auth.RoleAdmin, auth.RoleManager, auth.RoleModerator),
 		handle.DeleteCommentForcibly(commentRepo),
+	)
+
+	e.PUT("/role/:username",
+		handle.JwtAuthenticationMw(jwtService),
+		handle.JwtAuthorizationHasEachRoleMv(auth.RoleAdmin),
+		handle.AddRole(userRepo),
+	)
+
+	e.DELETE("/role/:username",
+		handle.JwtAuthenticationMw(jwtService),
+		handle.JwtAuthorizationHasEachRoleMv(auth.RoleAdmin),
+		handle.RemoveRole(userRepo),
 	)
 
 }
