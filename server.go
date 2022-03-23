@@ -16,6 +16,8 @@ const jwtIssuer = "gin-auth"
 
 func routeHandlerFuncs(e *gin.Engine) {
 
+	e.Use(handle.JwtAuthenticationMw(jwtService))
+
 	e.GET("/health",
 		handle.Health,
 	)
@@ -29,107 +31,107 @@ func routeHandlerFuncs(e *gin.Engine) {
 	)
 
 	e.PUT("/user",
-		handle.JwtAuthenticationMw(jwtService),
+		handle.JwtAuthenticationRequiredMw(jwtService),
 		handle.UpdateUser(userRepo, passEncoder),
 	)
 
 	e.GET("/user",
-		handle.JwtAuthenticationMw(jwtService),
+		handle.JwtAuthenticationRequiredMw(jwtService),
 		handle.FindUser(userRepo),
 	)
 
 	e.GET("/user/:username",
-		handle.JwtAuthenticationMw(jwtService),
+		handle.JwtAuthenticationRequiredMw(jwtService),
 		handle.FindUserByUsername(userRepo),
 	)
 
 	e.POST("/post",
-		handle.JwtAuthenticationMw(jwtService),
+		handle.JwtAuthenticationRequiredMw(jwtService),
 		handle.SavePost(postRepo),
 	)
 
 	e.PUT("/post/:id",
-		handle.JwtAuthenticationMw(jwtService),
+		handle.JwtAuthenticationRequiredMw(jwtService),
 		handle.UpdatePost(postRepo),
 	)
 
 	e.PUT("/post/force/:id",
-		handle.JwtAuthenticationMw(jwtService),
+		handle.JwtAuthenticationRequiredMw(jwtService),
 		handle.JwtAuthorizationHasAnyRoleMv(auth.RoleAdmin, auth.RoleManager),
 		handle.UpdatePostForcibly(postRepo),
 	)
 
 	e.GET("/post/:id",
-		handle.JwtAuthenticationMw(jwtService),
+		handle.JwtAuthenticationRequiredMw(jwtService),
 		handle.FindPost(postRepo),
 	)
 
 	e.GET("/post/list",
-		handle.JwtAuthenticationMw(jwtService),
+		handle.JwtAuthenticationRequiredMw(jwtService),
 		handle.FindAllPosts(postRepo),
 	)
 
 	e.GET("/post/list/:username",
-		handle.JwtAuthenticationMw(jwtService),
+		handle.JwtAuthenticationRequiredMw(jwtService),
 		handle.FindAllPostsByUsername(postRepo),
 	)
 
 	e.DELETE("/post/:id",
-		handle.JwtAuthenticationMw(jwtService),
+		handle.JwtAuthenticationRequiredMw(jwtService),
 		handle.DeletePost(postRepo),
 	)
 
 	e.DELETE("/post/force/:id",
-		handle.JwtAuthenticationMw(jwtService),
+		handle.JwtAuthenticationRequiredMw(jwtService),
 		handle.JwtAuthorizationHasAnyRoleMv(auth.RoleAdmin, auth.RoleManager),
 		handle.DeletePostForcibly(postRepo),
 	)
 
 	e.POST("/comment/:postId",
-		handle.JwtAuthenticationMw(jwtService),
+		handle.JwtAuthenticationRequiredMw(jwtService),
 		handle.SaveComment(commentRepo),
 	)
 
 	e.PUT("/comment/:id",
-		handle.JwtAuthenticationMw(jwtService),
+		handle.JwtAuthenticationRequiredMw(jwtService),
 		handle.UpdateComment(commentRepo),
 	)
 
 	e.PUT("/comment/force/:id",
-		handle.JwtAuthenticationMw(jwtService),
+		handle.JwtAuthenticationRequiredMw(jwtService),
 		handle.JwtAuthorizationHasAnyRoleMv(auth.RoleAdmin, auth.RoleManager, auth.RoleModerator),
 		handle.UpdateCommentForcibly(commentRepo),
 	)
 
 	e.GET("/comment/list",
-		handle.JwtAuthenticationMw(jwtService),
+		handle.JwtAuthenticationRequiredMw(jwtService),
 		handle.FindAllComments(commentRepo),
 	)
 
 	e.GET("/comment/list/:username",
-		handle.JwtAuthenticationMw(jwtService),
+		handle.JwtAuthenticationRequiredMw(jwtService),
 		handle.FindAllCommentsByUsername(commentRepo),
 	)
 
 	e.DELETE("/comment/:id",
-		handle.JwtAuthenticationMw(jwtService),
+		handle.JwtAuthenticationRequiredMw(jwtService),
 		handle.DeleteComment(commentRepo),
 	)
 
 	e.DELETE("/comment/force/:id",
-		handle.JwtAuthenticationMw(jwtService),
+		handle.JwtAuthenticationRequiredMw(jwtService),
 		handle.JwtAuthorizationHasAnyRoleMv(auth.RoleAdmin, auth.RoleManager, auth.RoleModerator),
 		handle.DeleteCommentForcibly(commentRepo),
 	)
 
 	e.PUT("/role/:username",
-		handle.JwtAuthenticationMw(jwtService),
+		handle.JwtAuthenticationRequiredMw(jwtService),
 		handle.JwtAuthorizationHasEachRoleMv(auth.RoleAdmin),
 		handle.AddRole(userRepo),
 	)
 
 	e.DELETE("/role/:username",
-		handle.JwtAuthenticationMw(jwtService),
+		handle.JwtAuthenticationRequiredMw(jwtService),
 		handle.JwtAuthorizationHasEachRoleMv(auth.RoleAdmin),
 		handle.RemoveRole(userRepo),
 	)

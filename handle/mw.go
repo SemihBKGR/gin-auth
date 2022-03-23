@@ -18,6 +18,31 @@ const ctxDataRolesKey = "roles"
 func JwtAuthenticationMw(service jwt.JwtService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tokenHeader := c.GetHeader(authHeader)
+		if tokenHeader != "" {
+			if !strings.HasPrefix(tokenHeader, authTokenPrefix) {
+				c.Status(http.StatusUnauthorized)
+				c.Abort()
+				return
+			}
+			tokenStr := strings.TrimPrefix(tokenHeader, authTokenPrefix)
+			token, err := service.VerifyToken(tokenStr)
+			if err != nil {
+				c.Status(http.StatusUnauthorized)
+				c.Abort()
+				return
+			}
+			c.Set(ctxDataTokenKey, token)
+			claims := token.Claims.(jwtlib.MapClaims)
+			c.Set(ctxDataClaimsKey, claims)
+			c.Set(ctxDataUsernameKey, claims[jwt.AppClaimsUsername])
+			c.Set(ctxDataRolesKey, claims[jwt.AppClaimsRoles])
+		}
+	}
+}
+
+func JwtAuthenticationRequiredMw(service jwt.JwtService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		tokenHeader := c.GetHeader(authHeader)
 		if !strings.HasPrefix(tokenHeader, authTokenPrefix) {
 			c.Status(http.StatusUnauthorized)
 			c.Abort()

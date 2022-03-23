@@ -576,7 +576,7 @@ func AddRole(repo persist.UserRepository) gin.HandlerFunc {
 			return
 		}
 		var role struct {
-			Name string
+			Name string `json:"name"`
 		}
 		err = json.Unmarshal(body, &role)
 		if err != nil {
@@ -605,7 +605,7 @@ func RemoveRole(repo persist.UserRepository) gin.HandlerFunc {
 			return
 		}
 		var role struct {
-			Name string
+			Name string `json:"name"`
 		}
 		err = json.Unmarshal(body, &role)
 		if err != nil {
