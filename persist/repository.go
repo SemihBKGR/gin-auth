@@ -1,26 +1,25 @@
 package persist
 
 type UserRepository interface {
-	Save(user *User) *User
-	Update(user *User) *User
-	Find(id uint) *User
-	FindByUsername(username string) *User
-	AddRole(username, role string)
-	RemoveRole(username, role string)
+	Save(user *User) error
+	Update(username string, user *User) error
+	FindByUsername(username string) (*User, error)
+	AddRole(username, role string) error
+	RemoveRole(username, role string) error
 }
 
 type PostRepository interface {
-	Save(post *Post) *Post
-	Update(post *Post) *Post
+	Save(post *Post) error
+	Update(post *Post) error
 	Find(id uint) *Post
 	FindAllByOwnerUsername(ownerUsername string) []*Post
-	Delete(id uint)
+	Delete(id uint) error
 }
 
 type CommentRepository interface {
-	Save(comment *Comment) *Comment
-	Update(comment *Comment) *Comment
+	Save(comment *Comment) error
+	Update(comment *Comment) error
 	Find(id uint) *Comment
-	FindAllByOwnerUsername(ownerUsername string) []*Comment
-	Delete(id uint)
+	FindAllByOwnerUsername(ownerUsername string) error
+	Delete(id uint) error
 }

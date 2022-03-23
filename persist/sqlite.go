@@ -45,65 +45,55 @@ func NewUserSqliteRepository() *UserSqliteRepository {
 	}
 }
 
-func (repo *UserSqliteRepository) Save(user *User) *User {
-	repo.db.Create(user)
-	return user
+func (repo *UserSqliteRepository) Save(user *User) error {
+	return repo.db.Create(user).Error
 }
 
-func (repo *UserSqliteRepository) Update(user *User) *User {
-	repo.db.Model(user).Updates(user)
-	return user
-}
-
-func (repo *UserSqliteRepository) Find(id uint) *User {
-	var user User
-	repo.db.Preload("Roles").First(&user, id)
-	return &user
+func (repo *UserSqliteRepository) Update(username string, user *User) error {
+	return repo.db.Model(user).Updates(map[string]interface{}{"password": user.Password}).Error
 }
 
 func (repo *UserSqliteRepository) FindByUsername(username string) *User {
 	var user User
-	repo.db.Preload("Roles").First(&user, "username = ?", username)
+	repo.db.Preload("roles").First(&user, "username = ?", username)
 	return &user
 }
 
-func (repo *UserSqliteRepository) AddRole(username, role string) {
-	repo.db.Exec(generateInsertUserRoleQuery(username, role))
+func (repo *UserSqliteRepository) AddRole(username, role string) error {
+	return repo.db.Exec(generateInsertUserRoleQuery(username, role)).Error
 }
 
-func (repo *UserSqliteRepository) RemoveRole(username, role string) {
-	repo.db.Exec(generateDeleteUserRoleQuery(username, role))
+func (repo *UserSqliteRepository) RemoveRole(username, role string) error {
+	return repo.db.Exec(generateDeleteUserRoleQuery(username, role)).Error
 }
 
 type PostSqliteRepository struct {
 	db *gorm.DB
 }
 
-func (repo *PostSqliteRepository) Save(post *Post) *Post {
-	repo.db.Create(post)
-	return post
+func (repo *PostSqliteRepository) Save(post *Post) error {
+	return repo.db.Create(post).Error
 }
 
-func (repo *PostSqliteRepository) Update(post *Post) *Post {
-	repo.db.Model(post).Updates(post)
-	return post
+func (repo *PostSqliteRepository) Update(post *Post) error {
+	return repo.db.Model(post).Updates(post).Error
 }
 
-func (repo *PostSqliteRepository) Find(id uint) *Post {
+func (repo *PostSqliteRepository) Find(id uint) (*Post, error) {
 	var post Post
-	repo.db.First(&post, id)
-	return &post
+	err := repo.db.First(&post, id).Error
+	return &post, err
 }
 
-func (repo *PostSqliteRepository) FindAllByOwnerUsername(ownerUsername string) []*Post {
+func (repo *PostSqliteRepository) FindAllByOwnerUsername(ownerUsername string) ([]*Post, error) {
 	var posts []*Post
-	repo.db.Find(&posts, "owner_refer = ?", ownerUsername)
-	return posts
+	err := repo.db.Find(&posts, "owner_refer = ?", ownerUsername).Error
+	return posts, err
 }
 
-func (repo *PostSqliteRepository) Delete(id uint) {
+func (repo *PostSqliteRepository) Delete(id uint) error {
 	var post Post
-	repo.db.Delete(&post, id)
+	return repo.db.Delete(&post, id).Error
 }
 
 func NewPostSqliteRepository() *PostSqliteRepository {
@@ -116,37 +106,29 @@ type CommentSqliteRepository struct {
 	db *gorm.DB
 }
 
-func (repo *CommentSqliteRepository) Save(comment *Comment) *Comment {
-	repo.db.Create(comment)
-	return comment
+func (repo *CommentSqliteRepository) Save(comment *Comment) error {
+	return repo.db.Create(comment).Error
 }
 
-func (repo *CommentSqliteRepository) Update(comment *Comment) *Comment {
-	repo.db.Model(comment).Updates(comment)
-	return comment
+func (repo *CommentSqliteRepository) Update(comment *Comment) error {
+	return repo.db.Updates(comment).Error
 }
 
-func (repo *CommentSqliteRepository) Find(id uint) *Comment {
+func (repo *CommentSqliteRepository) Find(id uint) (*Comment, error) {
 	var comment Comment
-	repo.db.First(&comment, id)
-	return &comment
+	err := repo.db.First(&comment, id).Error
+	return &comment, err
 }
 
-func (repo *CommentSqliteRepository) FindAllByPostId(postId uint) []*Comment {
+func (repo *CommentSqliteRepository) FindAllByOwnerUsername(ownerUsername string) ([]*Comment, error) {
 	var comments []*Comment
-	repo.db.Find(comments, "postId = ?", postId)
-	return comments
+	err := repo.db.Find(comments, "owner_refer = ?", ownerUsername).Error
+	return comments, err
 }
 
-func (repo *CommentSqliteRepository) FindAllByOwnerUsername(ownerUsername string) []*Comment {
-	var comments []*Comment
-	repo.db.Find(comments, "owner_refer = ?", ownerUsername)
-	return comments
-}
-
-func (repo *CommentSqliteRepository) Delete(id uint) {
+func (repo *CommentSqliteRepository) Delete(id uint) error {
 	var comment Comment
-	repo.db.Delete(&comment, id)
+	return repo.db.Delete(&comment, id).Error
 }
 
 func NewCommentSqliteRepository() *CommentSqliteRepository {

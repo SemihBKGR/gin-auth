@@ -61,8 +61,12 @@ func SaveUser(repo persist.UserRepository, encoder auth.PasswordEncoder) gin.Han
 			return
 		}
 		user.Password = pass
-		persistUser := repo.Save(&user)
-		c.JSON(http.StatusCreated, hideUserConfidentialFields(persistUser))
+		err = repo.Save(&user)
+		if err != nil {
+			wrapErrorAndSend(err, http.StatusInternalServerError, c)
+		} else {
+			c.JSON(http.StatusCreated, hideUserConfidentialFields(&user))
+		}
 	}
 }
 
