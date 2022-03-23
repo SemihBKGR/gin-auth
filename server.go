@@ -85,7 +85,7 @@ func routeHandlerFuncs(e *gin.Engine) {
 		handle.DeletePostForcibly(postRepo),
 	)
 
-	e.POST("/comment",
+	e.POST("/comment/:postId",
 		handle.JwtAuthenticationMw(jwtService),
 		handle.SaveComment(commentRepo),
 	)
@@ -101,9 +101,14 @@ func routeHandlerFuncs(e *gin.Engine) {
 		handle.UpdateCommentForcibly(commentRepo),
 	)
 
-	e.GET("/comment/:username",
+	e.GET("/comment/list",
 		handle.JwtAuthenticationMw(jwtService),
-		handle.FindComments(commentRepo),
+		handle.FindAllComments(commentRepo),
+	)
+
+	e.GET("/comment/list/:username",
+		handle.JwtAuthenticationMw(jwtService),
+		handle.FindAllCommentsByUsername(commentRepo),
 	)
 
 	e.DELETE("/comment/:id",

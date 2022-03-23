@@ -28,7 +28,7 @@ func init() {
 		db.Exec(auth.GenerateInsertAdminQuery(passEncoder))
 		db.Exec(auth.InsertAdminRoleQuery)
 	})
-	log.Infof("Admin username: %s, password: %s\n", auth.AdminUsername, auth.AdminPassword)
+	log.Infof("Admin username: %s, password: %s", auth.AdminUsername, auth.AdminPassword)
 }
 
 func main() {

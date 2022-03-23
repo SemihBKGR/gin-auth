@@ -12,8 +12,8 @@ type DefaultLoginService struct {
 }
 
 func (s *DefaultLoginService) Login(username, password string) (*persist.User, bool) {
-	user := s.userRepo.FindByUsername(username)
-	if user == nil {
+	user, err := s.userRepo.FindByUsername(username)
+	if err != nil || user == nil {
 		return user, false
 	}
 	return user, s.passEncoder.Compare(user.Password, password)

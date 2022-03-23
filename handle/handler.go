@@ -52,7 +52,7 @@ func SaveUser(repo persist.UserRepository, encoder auth.PasswordEncoder) gin.Han
 		var user persist.User
 		err = json.Unmarshal(body, &user)
 		if err != nil {
-			wrapErrorAndSend(err, http.StatusInternalServerError, c)
+			wrapErrorAndSend(err, http.StatusBadRequest, c)
 			return
 		}
 		pass, err := encoder.Encode(user.Password)
@@ -64,9 +64,9 @@ func SaveUser(repo persist.UserRepository, encoder auth.PasswordEncoder) gin.Han
 		err = repo.Save(&user)
 		if err != nil {
 			wrapErrorAndSend(err, http.StatusInternalServerError, c)
-		} else {
-			c.JSON(http.StatusCreated, hideUserConfidentialFields(&user))
+			return
 		}
+		c.JSON(http.StatusCreated, hideUserConfidentialFields(&user))
 	}
 }
 
@@ -85,18 +85,22 @@ func UpdateUser(repo persist.UserRepository, encoder auth.PasswordEncoder) gin.H
 		var user persist.User
 		err = json.Unmarshal(body, &user)
 		if err != nil {
-			wrapErrorAndSend(err, http.StatusInternalServerError, c)
+			wrapErrorAndSend(err, http.StatusBadRequest, c)
 			return
 		}
-		persistUser := repo.FindByUsername(username)
+		user.Username = username
 		pass, err := encoder.Encode(user.Password)
 		if err != nil {
 			wrapErrorAndSend(err, http.StatusBadRequest, c)
 			return
 		}
-		persistUser.Password = pass
-		updateUser := repo.Update(persistUser)
-		c.JSON(http.StatusAccepted, hideUserConfidentialFields(updateUser))
+		user.Password = pass
+		err = repo.Update(&user)
+		if err != nil {
+			wrapErrorAndSend(err, http.StatusInternalServerError, c)
+			return
+		}
+		c.JSON(http.StatusAccepted, hideUserConfidentialFields(&user))
 	}
 }
 
@@ -107,7 +111,11 @@ func FindUser(repo persist.UserRepository) gin.HandlerFunc {
 			c.Status(http.StatusInternalServerError)
 			return
 		}
-		user := repo.FindByUsername(username)
+		user, err := repo.FindByUsername(username)
+		if err != nil {
+			wrapErrorAndSend(err, http.StatusInternalServerError, c)
+			return
+		}
 		c.JSON(http.StatusOK, hideUserConfidentialFields(user))
 	}
 }
@@ -119,7 +127,11 @@ func FindUserByUsername(repo persist.UserRepository) gin.HandlerFunc {
 			c.Status(http.StatusBadRequest)
 			return
 		}
-		user := repo.FindByUsername(username)
+		user, err := repo.FindByUsername(username)
+		if err != nil {
+			wrapErrorAndSend(err, http.StatusInternalServerError, c)
+			return
+		}
 		c.JSON(http.StatusOK, hideUserConfidentialFields(user))
 	}
 }
@@ -139,11 +151,16 @@ func SavePost(repo persist.PostRepository) gin.HandlerFunc {
 		var post *persist.Post
 		err = json.Unmarshal(body, &post)
 		if err != nil {
-			wrapErrorAndSend(err, http.StatusInternalServerError, c)
+			wrapErrorAndSend(err, http.StatusBadRequest, c)
 			return
 		}
 		post.OwnerRefer = username
-		c.JSON(http.StatusCreated, repo.Save(post))
+		err = repo.Save(post)
+		if err != nil {
+			wrapErrorAndSend(err, http.StatusInternalServerError, c)
+			return
+		}
+		c.JSON(http.StatusCreated, &post)
 	}
 }
 
@@ -151,7 +168,7 @@ func UpdatePost(repo persist.PostRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		idStr := c.Param("id")
 		id, err := strconv.Atoi(idStr)
-		if err != nil {
+		if err != nil || id <= 0 {
 			c.Status(http.StatusBadRequest)
 			return
 		}
@@ -165,13 +182,17 @@ func UpdatePost(repo persist.PostRepository) gin.HandlerFunc {
 			wrapErrorAndSend(err, http.StatusBadRequest, c)
 			return
 		}
-		var post *persist.Post
+		var post persist.Post
 		err = json.Unmarshal(body, &post)
+		if err != nil {
+			wrapErrorAndSend(err, http.StatusBadRequest, c)
+			return
+		}
+		persistPost, err := repo.Find(uint(id))
 		if err != nil {
 			wrapErrorAndSend(err, http.StatusInternalServerError, c)
 			return
 		}
-		persistPost := repo.Find(uint(id))
 		if persistPost == nil {
 			wrapErrorAndSend(errors.New("no such post"), http.StatusBadRequest, c)
 			return
@@ -180,8 +201,13 @@ func UpdatePost(repo persist.PostRepository) gin.HandlerFunc {
 			wrapErrorAndSend(errors.New("post is not your"), http.StatusForbidden, c)
 			return
 		}
-		persistPost.Content = post.Content
-		c.JSON(http.StatusCreated, repo.Save(persistPost))
+		post.ID = uint(id)
+		err = repo.Update(&post)
+		if err != nil {
+			wrapErrorAndSend(err, http.StatusInternalServerError, c)
+			return
+		}
+		c.JSON(http.StatusCreated, &post)
 	}
 }
 
@@ -189,7 +215,7 @@ func UpdatePostForcibly(repo persist.PostRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		idStr := c.Param("id")
 		id, err := strconv.Atoi(idStr)
-		if err != nil {
+		if err != nil || id <= 0 {
 			c.Status(http.StatusBadRequest)
 			return
 		}
@@ -198,19 +224,28 @@ func UpdatePostForcibly(repo persist.PostRepository) gin.HandlerFunc {
 			wrapErrorAndSend(err, http.StatusBadRequest, c)
 			return
 		}
-		var post *persist.Post
+		var post persist.Post
 		err = json.Unmarshal(body, &post)
+		if err != nil {
+			wrapErrorAndSend(err, http.StatusBadRequest, c)
+			return
+		}
+		persistPost, err := repo.Find(uint(id))
 		if err != nil {
 			wrapErrorAndSend(err, http.StatusInternalServerError, c)
 			return
 		}
-		persistPost := repo.Find(uint(id))
 		if persistPost == nil {
 			wrapErrorAndSend(errors.New("no such post"), http.StatusBadRequest, c)
 			return
 		}
-		persistPost.Content = post.Content
-		c.JSON(http.StatusCreated, repo.Save(persistPost))
+		post.ID = uint(id)
+		err = repo.Update(&post)
+		if err != nil {
+			wrapErrorAndSend(err, http.StatusInternalServerError, c)
+			return
+		}
+		c.JSON(http.StatusCreated, &post)
 	}
 }
 
@@ -218,11 +253,15 @@ func FindPost(repo persist.PostRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		idStr := c.Param("id")
 		id, err := strconv.Atoi(idStr)
-		if err != nil {
+		if err != nil || id <= 0 {
 			c.Status(http.StatusBadRequest)
 			return
 		}
-		post := repo.Find(uint(id))
+		post, err := repo.Find(uint(id))
+		if err != nil {
+			wrapErrorAndSend(err, http.StatusInternalServerError, c)
+			return
+		}
 		c.JSON(http.StatusOK, post)
 	}
 }
@@ -234,7 +273,11 @@ func FindAllPosts(repo persist.PostRepository) gin.HandlerFunc {
 			c.Status(http.StatusInternalServerError)
 			return
 		}
-		posts := repo.FindAllByOwnerUsername(username)
+		posts, err := repo.FindAllByOwnerUsername(username)
+		if err != nil {
+			wrapErrorAndSend(err, http.StatusInternalServerError, c)
+			return
+		}
 		c.JSON(http.StatusOK, posts)
 	}
 }
@@ -246,7 +289,11 @@ func FindAllPostsByUsername(repo persist.PostRepository) gin.HandlerFunc {
 			c.Status(http.StatusBadRequest)
 			return
 		}
-		posts := repo.FindAllByOwnerUsername(username)
+		posts, err := repo.FindAllByOwnerUsername(username)
+		if err != nil {
+			wrapErrorAndSend(err, http.StatusInternalServerError, c)
+			return
+		}
 		c.JSON(http.StatusOK, posts)
 	}
 }
@@ -255,7 +302,7 @@ func DeletePost(repo persist.PostRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		idStr := c.Param("id")
 		id, err := strconv.Atoi(idStr)
-		if err != nil {
+		if err != nil || id <= 0 {
 			c.Status(http.StatusBadRequest)
 			return
 		}
@@ -264,7 +311,11 @@ func DeletePost(repo persist.PostRepository) gin.HandlerFunc {
 			c.Status(http.StatusInternalServerError)
 			return
 		}
-		persistPost := repo.Find(uint(id))
+		persistPost, err := repo.Find(uint(id))
+		if err != nil {
+			wrapErrorAndSend(err, http.StatusInternalServerError, c)
+			return
+		}
 		if persistPost == nil {
 			wrapErrorAndSend(errors.New("no such post"), http.StatusBadRequest, c)
 			return
@@ -273,7 +324,11 @@ func DeletePost(repo persist.PostRepository) gin.HandlerFunc {
 			wrapErrorAndSend(errors.New("post is not your"), http.StatusForbidden, c)
 			return
 		}
-		repo.Delete(uint(id))
+		err = repo.Delete(uint(id))
+		if err != nil {
+			wrapErrorAndSend(err, http.StatusInternalServerError, c)
+			return
+		}
 		c.Status(http.StatusAccepted)
 	}
 }
@@ -282,17 +337,27 @@ func DeletePostForcibly(repo persist.PostRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		idStr := c.Param("id")
 		id, err := strconv.Atoi(idStr)
-		if err != nil {
+		if err != nil || id <= 0 {
 			c.Status(http.StatusBadRequest)
 			return
 		}
-		repo.Delete(uint(id))
+		err = repo.Delete(uint(id))
+		if err != nil {
+			wrapErrorAndSend(err, http.StatusInternalServerError, c)
+			return
+		}
 		c.Status(http.StatusAccepted)
 	}
 }
 
 func SaveComment(repo persist.CommentRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		postIdStr := c.Param("postId")
+		postId, err := strconv.Atoi(postIdStr)
+		if err != nil || postId <= 0 {
+			c.Status(http.StatusBadRequest)
+			return
+		}
 		username, ok := ExtractUsernameContextData(c)
 		if !ok {
 			c.Status(http.StatusInternalServerError)
@@ -306,11 +371,17 @@ func SaveComment(repo persist.CommentRepository) gin.HandlerFunc {
 		var comment *persist.Comment
 		err = json.Unmarshal(body, &comment)
 		if err != nil {
+			wrapErrorAndSend(err, http.StatusBadRequest, c)
+			return
+		}
+		comment.PostRefer = uint(postId)
+		comment.OwnerRefer = username
+		err = repo.Save(comment)
+		if err != nil {
 			wrapErrorAndSend(err, http.StatusInternalServerError, c)
 			return
 		}
-		comment.OwnerRefer = username
-		c.JSON(http.StatusOK, repo.Save(comment))
+		c.JSON(http.StatusOK, &comment)
 	}
 }
 
@@ -318,7 +389,7 @@ func UpdateComment(repo persist.CommentRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		idStr := c.Param("id")
 		id, err := strconv.Atoi(idStr)
-		if err != nil {
+		if err != nil || id <= 0 {
 			c.Status(http.StatusBadRequest)
 			return
 		}
@@ -332,13 +403,17 @@ func UpdateComment(repo persist.CommentRepository) gin.HandlerFunc {
 			wrapErrorAndSend(err, http.StatusBadRequest, c)
 			return
 		}
-		var comment *persist.Comment
+		var comment persist.Comment
 		err = json.Unmarshal(body, &comment)
+		if err != nil {
+			wrapErrorAndSend(err, http.StatusBadRequest, c)
+			return
+		}
+		persistComment, err := repo.Find(uint(id))
 		if err != nil {
 			wrapErrorAndSend(err, http.StatusInternalServerError, c)
 			return
 		}
-		persistComment := repo.Find(uint(id))
 		if persistComment == nil {
 			wrapErrorAndSend(errors.New("no such comment"), http.StatusBadRequest, c)
 			return
@@ -347,8 +422,13 @@ func UpdateComment(repo persist.CommentRepository) gin.HandlerFunc {
 			wrapErrorAndSend(errors.New("comment is not your"), http.StatusForbidden, c)
 			return
 		}
-		persistComment.Content = comment.Content
-		c.JSON(http.StatusOK, repo.Save(persistComment))
+		comment.ID = uint(id)
+		err = repo.Update(&comment)
+		if err != nil {
+			wrapErrorAndSend(err, http.StatusInternalServerError, c)
+			return
+		}
+		c.JSON(http.StatusOK, &comment)
 	}
 }
 
@@ -356,7 +436,7 @@ func UpdateCommentForcibly(repo persist.CommentRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		idStr := c.Param("id")
 		id, err := strconv.Atoi(idStr)
-		if err != nil {
+		if err != nil || id <= 0 {
 			c.Status(http.StatusBadRequest)
 			return
 		}
@@ -370,13 +450,17 @@ func UpdateCommentForcibly(repo persist.CommentRepository) gin.HandlerFunc {
 			wrapErrorAndSend(err, http.StatusBadRequest, c)
 			return
 		}
-		var comment *persist.Comment
+		var comment persist.Comment
 		err = json.Unmarshal(body, &comment)
+		if err != nil {
+			wrapErrorAndSend(err, http.StatusBadRequest, c)
+			return
+		}
+		persistComment, err := repo.Find(uint(id))
 		if err != nil {
 			wrapErrorAndSend(err, http.StatusInternalServerError, c)
 			return
 		}
-		persistComment := repo.Find(uint(id))
 		if persistComment == nil {
 			wrapErrorAndSend(errors.New("no such comment"), http.StatusBadRequest, c)
 			return
@@ -385,19 +469,44 @@ func UpdateCommentForcibly(repo persist.CommentRepository) gin.HandlerFunc {
 			wrapErrorAndSend(errors.New("comment is not your"), http.StatusForbidden, c)
 			return
 		}
-		persistComment.Content = comment.Content
-		c.JSON(http.StatusOK, repo.Save(persistComment))
+		comment.ID = uint(id)
+		err = repo.Update(&comment)
+		if err != nil {
+			wrapErrorAndSend(err, http.StatusInternalServerError, c)
+			return
+		}
+		c.JSON(http.StatusOK, &comment)
 	}
 }
 
-func FindComments(repo persist.CommentRepository) gin.HandlerFunc {
+func FindAllComments(repo persist.CommentRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		username, ok := ExtractUsernameContextData(c)
 		if !ok {
 			c.Status(http.StatusInternalServerError)
 			return
 		}
-		comments := repo.FindAllByOwnerUsername(username)
+		comments, err := repo.FindAllByOwnerUsername(username)
+		if err != nil {
+			wrapErrorAndSend(err, http.StatusInternalServerError, c)
+			return
+		}
+		c.JSON(http.StatusOK, comments)
+	}
+}
+
+func FindAllCommentsByUsername(repo persist.CommentRepository) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		username := c.Param("username")
+		if username == "" {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+		comments, err := repo.FindAllByOwnerUsername(username)
+		if err != nil {
+			wrapErrorAndSend(err, http.StatusInternalServerError, c)
+			return
+		}
 		c.JSON(http.StatusOK, comments)
 	}
 }
@@ -406,7 +515,7 @@ func DeleteComment(repo persist.CommentRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		idStr := c.Param("id")
 		id, err := strconv.Atoi(idStr)
-		if err != nil {
+		if err != nil || id <= 0 {
 			c.Status(http.StatusBadRequest)
 			return
 		}
@@ -415,7 +524,11 @@ func DeleteComment(repo persist.CommentRepository) gin.HandlerFunc {
 			c.Status(http.StatusInternalServerError)
 			return
 		}
-		persistComment := repo.Find(uint(id))
+		persistComment, err := repo.Find(uint(id))
+		if err != nil {
+			wrapErrorAndSend(err, http.StatusInternalServerError, c)
+			return
+		}
 		if persistComment == nil {
 			wrapErrorAndSend(errors.New("no such persistComment"), http.StatusBadRequest, c)
 			return
@@ -424,7 +537,11 @@ func DeleteComment(repo persist.CommentRepository) gin.HandlerFunc {
 			wrapErrorAndSend(errors.New("comment is not your"), http.StatusForbidden, c)
 			return
 		}
-		repo.Delete(uint(id))
+		err = repo.Delete(uint(id))
+		if err != nil {
+			wrapErrorAndSend(err, http.StatusInternalServerError, c)
+			return
+		}
 		c.Status(http.StatusAccepted)
 	}
 }
@@ -433,11 +550,15 @@ func DeleteCommentForcibly(repo persist.CommentRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		idStr := c.Param("id")
 		id, err := strconv.Atoi(idStr)
-		if err != nil {
+		if err != nil || id <= 0 {
 			c.Status(http.StatusBadRequest)
 			return
 		}
-		repo.Delete(uint(id))
+		err = repo.Delete(uint(id))
+		if err != nil {
+			wrapErrorAndSend(err, http.StatusInternalServerError, c)
+			return
+		}
 		c.Status(http.StatusAccepted)
 	}
 }
@@ -459,10 +580,15 @@ func AddRole(repo persist.UserRepository) gin.HandlerFunc {
 		}
 		err = json.Unmarshal(body, &role)
 		if err != nil {
+			wrapErrorAndSend(err, http.StatusBadRequest, c)
+			return
+		}
+		err = repo.AddRole(username, role.Name)
+		if err != nil {
 			wrapErrorAndSend(err, http.StatusInternalServerError, c)
 			return
 		}
-		repo.AddRole(username, role.Name)
+		c.Status(http.StatusAccepted)
 	}
 }
 
@@ -483,10 +609,15 @@ func RemoveRole(repo persist.UserRepository) gin.HandlerFunc {
 		}
 		err = json.Unmarshal(body, &role)
 		if err != nil {
+			wrapErrorAndSend(err, http.StatusBadRequest, c)
+			return
+		}
+		err = repo.RemoveRole(username, role.Name)
+		if err != nil {
 			wrapErrorAndSend(err, http.StatusInternalServerError, c)
 			return
 		}
-		repo.RemoveRole(username, role.Name)
+		c.Status(http.StatusAccepted)
 	}
 }
 

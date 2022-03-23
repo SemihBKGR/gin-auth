@@ -17,7 +17,6 @@ type jwtService struct {
 	Issuer string
 }
 
-const AppClaimsId = "ID"
 const AppClaimsUsername = "Username"
 const AppClaimsRoles = "Roles"
 
