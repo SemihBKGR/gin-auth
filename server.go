@@ -38,9 +38,9 @@ func routeHandlerFuncs(e *gin.Engine) {
 		handle.FindUser(userRepo),
 	)
 
-	e.GET("/user/:id",
+	e.GET("/user/:username",
 		handle.JwtAuthenticationMw(jwtService),
-		handle.FindUserById(userRepo),
+		handle.FindUserByUsername(userRepo),
 	)
 
 	e.POST("/post",

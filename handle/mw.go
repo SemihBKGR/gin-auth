@@ -12,7 +12,6 @@ const authHeader = "Authorization"
 const authTokenPrefix = "Bearer "
 const ctxDataTokenKey = "token"
 const ctxDataClaimsKey = "claims"
-const ctxDataIdKey = "id"
 const ctxDataUsernameKey = "username"
 const ctxDataRolesKey = "roles"
 
@@ -34,7 +33,6 @@ func JwtAuthenticationMw(service jwt.JwtService) gin.HandlerFunc {
 		c.Set(ctxDataTokenKey, token)
 		claims := token.Claims.(jwtlib.MapClaims)
 		c.Set(ctxDataClaimsKey, claims)
-		c.Set(ctxDataIdKey, claims[jwt.AppClaimsId])
 		c.Set(ctxDataUsernameKey, claims[jwt.AppClaimsUsername])
 		c.Set(ctxDataRolesKey, claims[jwt.AppClaimsRoles])
 	}
@@ -95,18 +93,6 @@ func roleContains(existingRoles []string, role string) bool {
 		}
 	}
 	return false
-}
-
-func ExtractIdContextData(c *gin.Context) (uint, bool) {
-	IdData, ok := c.Get(ctxDataIdKey)
-	if !ok {
-		return 0, false
-	}
-	id, ok := IdData.(float64)
-	if !ok {
-		return 0, false
-	}
-	return uint(id), true
 }
 
 func ExtractUsernameContextData(c *gin.Context) (string, bool) {

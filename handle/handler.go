@@ -68,6 +68,11 @@ func SaveUser(repo persist.UserRepository, encoder auth.PasswordEncoder) gin.Han
 
 func UpdateUser(repo persist.UserRepository, encoder auth.PasswordEncoder) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		username, ok := ExtractUsernameContextData(c)
+		if !ok {
+			wrapErrorAndSend(errors.New("context data does not contains username"), http.StatusInternalServerError, c)
+			return
+		}
 		body, err := io.ReadAll(c.Request.Body)
 		if err != nil {
 			wrapErrorAndSend(err, http.StatusBadRequest, c)
@@ -79,12 +84,7 @@ func UpdateUser(repo persist.UserRepository, encoder auth.PasswordEncoder) gin.H
 			wrapErrorAndSend(err, http.StatusInternalServerError, c)
 			return
 		}
-		id, ok := ExtractIdContextData(c)
-		if !ok {
-			wrapErrorAndSend(errors.New("context data does not contains id"), http.StatusInternalServerError, c)
-			return
-		}
-		persistUser := repo.Find(id)
+		persistUser := repo.FindByUsername(username)
 		pass, err := encoder.Encode(user.Password)
 		if err != nil {
 			wrapErrorAndSend(err, http.StatusBadRequest, c)
@@ -108,20 +108,25 @@ func FindUser(repo persist.UserRepository) gin.HandlerFunc {
 	}
 }
 
-func FindUserById(repo persist.UserRepository) gin.HandlerFunc {
+func FindUserByUsername(repo persist.UserRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		idParam := c.Param("id")
-		id, err := strconv.Atoi(idParam)
-		if err != nil {
-			wrapErrorAndSend(err, http.StatusBadRequest, c)
+		username := c.Param("username")
+		if username != "" {
+			c.Status(http.StatusBadRequest)
 			return
 		}
-		c.JSON(http.StatusOK, repo.Find(uint(id)))
+		user := repo.FindByUsername(username)
+		c.JSON(http.StatusOK, hideUserConfidentialFields(user))
 	}
 }
 
 func SavePost(repo persist.PostRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		username, ok := ExtractUsernameContextData(c)
+		if !ok {
+			c.Status(http.StatusInternalServerError)
+			return
+		}
 		body, err := io.ReadAll(c.Request.Body)
 		if err != nil {
 			wrapErrorAndSend(err, http.StatusBadRequest, c)
@@ -131,11 +136,6 @@ func SavePost(repo persist.PostRepository) gin.HandlerFunc {
 		err = json.Unmarshal(body, &post)
 		if err != nil {
 			wrapErrorAndSend(err, http.StatusInternalServerError, c)
-			return
-		}
-		username, ok := ExtractUsernameContextData(c)
-		if !ok {
-			c.Status(http.StatusInternalServerError)
 			return
 		}
 		post.OwnerRefer = username
@@ -145,6 +145,17 @@ func SavePost(repo persist.PostRepository) gin.HandlerFunc {
 
 func UpdatePost(repo persist.PostRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		idStr := c.Param("id")
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+		username, ok := ExtractUsernameContextData(c)
+		if !ok {
+			c.Status(http.StatusInternalServerError)
+			return
+		}
 		body, err := io.ReadAll(c.Request.Body)
 		if err != nil {
 			wrapErrorAndSend(err, http.StatusBadRequest, c)
@@ -156,20 +167,9 @@ func UpdatePost(repo persist.PostRepository) gin.HandlerFunc {
 			wrapErrorAndSend(err, http.StatusInternalServerError, c)
 			return
 		}
-		idStr := c.Param("id")
-		id, err := strconv.Atoi(idStr)
-		if err != nil {
-			c.Status(http.StatusBadRequest)
-			return
-		}
 		persistPost := repo.Find(uint(id))
 		if persistPost == nil {
 			wrapErrorAndSend(errors.New("no such post"), http.StatusBadRequest, c)
-			return
-		}
-		username, ok := ExtractUsernameContextData(c)
-		if !ok {
-			c.Status(http.StatusInternalServerError)
 			return
 		}
 		if persistPost.OwnerRefer != username {
@@ -183,6 +183,12 @@ func UpdatePost(repo persist.PostRepository) gin.HandlerFunc {
 
 func UpdatePostForcibly(repo persist.PostRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		idStr := c.Param("id")
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
 		body, err := io.ReadAll(c.Request.Body)
 		if err != nil {
 			wrapErrorAndSend(err, http.StatusBadRequest, c)
@@ -194,24 +200,9 @@ func UpdatePostForcibly(repo persist.PostRepository) gin.HandlerFunc {
 			wrapErrorAndSend(err, http.StatusInternalServerError, c)
 			return
 		}
-		idStr := c.Param("id")
-		id, err := strconv.Atoi(idStr)
-		if err != nil {
-			c.Status(http.StatusBadRequest)
-			return
-		}
 		persistPost := repo.Find(uint(id))
 		if persistPost == nil {
 			wrapErrorAndSend(errors.New("no such post"), http.StatusBadRequest, c)
-			return
-		}
-		username, ok := ExtractUsernameContextData(c)
-		if !ok {
-			c.Status(http.StatusInternalServerError)
-			return
-		}
-		if persistPost.OwnerRefer != username {
-			wrapErrorAndSend(errors.New("post is not your"), http.StatusForbidden, c)
 			return
 		}
 		persistPost.Content = post.Content
@@ -264,14 +255,14 @@ func DeletePost(repo persist.PostRepository) gin.HandlerFunc {
 			c.Status(http.StatusBadRequest)
 			return
 		}
-		persistPost := repo.Find(uint(id))
-		if persistPost == nil {
-			wrapErrorAndSend(errors.New("no such post"), http.StatusBadRequest, c)
-			return
-		}
 		username, ok := ExtractUsernameContextData(c)
 		if !ok {
 			c.Status(http.StatusInternalServerError)
+			return
+		}
+		persistPost := repo.Find(uint(id))
+		if persistPost == nil {
+			wrapErrorAndSend(errors.New("no such post"), http.StatusBadRequest, c)
 			return
 		}
 		if persistPost.OwnerRefer != username {
@@ -298,6 +289,11 @@ func DeletePostForcibly(repo persist.PostRepository) gin.HandlerFunc {
 
 func SaveComment(repo persist.CommentRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		username, ok := ExtractUsernameContextData(c)
+		if !ok {
+			c.Status(http.StatusInternalServerError)
+			return
+		}
 		body, err := io.ReadAll(c.Request.Body)
 		if err != nil {
 			wrapErrorAndSend(err, http.StatusBadRequest, c)
@@ -307,11 +303,6 @@ func SaveComment(repo persist.CommentRepository) gin.HandlerFunc {
 		err = json.Unmarshal(body, &comment)
 		if err != nil {
 			wrapErrorAndSend(err, http.StatusInternalServerError, c)
-			return
-		}
-		username, ok := ExtractUsernameContextData(c)
-		if !ok {
-			c.Status(http.StatusInternalServerError)
 			return
 		}
 		comment.OwnerRefer = username
@@ -321,6 +312,17 @@ func SaveComment(repo persist.CommentRepository) gin.HandlerFunc {
 
 func UpdateComment(repo persist.CommentRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		idStr := c.Param("id")
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+		username, ok := ExtractUsernameContextData(c)
+		if !ok {
+			c.Status(http.StatusInternalServerError)
+			return
+		}
 		body, err := io.ReadAll(c.Request.Body)
 		if err != nil {
 			wrapErrorAndSend(err, http.StatusBadRequest, c)
@@ -332,20 +334,9 @@ func UpdateComment(repo persist.CommentRepository) gin.HandlerFunc {
 			wrapErrorAndSend(err, http.StatusInternalServerError, c)
 			return
 		}
-		idStr := c.Param("id")
-		id, err := strconv.Atoi(idStr)
-		if err != nil {
-			c.Status(http.StatusBadRequest)
-			return
-		}
 		persistComment := repo.Find(uint(id))
 		if persistComment == nil {
 			wrapErrorAndSend(errors.New("no such comment"), http.StatusBadRequest, c)
-			return
-		}
-		username, ok := ExtractUsernameContextData(c)
-		if !ok {
-			c.Status(http.StatusInternalServerError)
 			return
 		}
 		if username != persistComment.OwnerRefer {
@@ -359,6 +350,17 @@ func UpdateComment(repo persist.CommentRepository) gin.HandlerFunc {
 
 func UpdateCommentForcibly(repo persist.CommentRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		idStr := c.Param("id")
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+		username, ok := ExtractUsernameContextData(c)
+		if !ok {
+			c.Status(http.StatusInternalServerError)
+			return
+		}
 		body, err := io.ReadAll(c.Request.Body)
 		if err != nil {
 			wrapErrorAndSend(err, http.StatusBadRequest, c)
@@ -370,20 +372,9 @@ func UpdateCommentForcibly(repo persist.CommentRepository) gin.HandlerFunc {
 			wrapErrorAndSend(err, http.StatusInternalServerError, c)
 			return
 		}
-		idStr := c.Param("id")
-		id, err := strconv.Atoi(idStr)
-		if err != nil {
-			c.Status(http.StatusBadRequest)
-			return
-		}
 		persistComment := repo.Find(uint(id))
 		if persistComment == nil {
 			wrapErrorAndSend(errors.New("no such comment"), http.StatusBadRequest, c)
-			return
-		}
-		username, ok := ExtractUsernameContextData(c)
-		if !ok {
-			c.Status(http.StatusInternalServerError)
 			return
 		}
 		if username != persistComment.OwnerRefer {
@@ -415,14 +406,14 @@ func DeleteComment(repo persist.CommentRepository) gin.HandlerFunc {
 			c.Status(http.StatusBadRequest)
 			return
 		}
-		persistComment := repo.Find(uint(id))
-		if persistComment == nil {
-			wrapErrorAndSend(errors.New("no such persistComment"), http.StatusBadRequest, c)
-			return
-		}
 		username, ok := ExtractUsernameContextData(c)
 		if !ok {
 			c.Status(http.StatusInternalServerError)
+			return
+		}
+		persistComment := repo.Find(uint(id))
+		if persistComment == nil {
+			wrapErrorAndSend(errors.New("no such persistComment"), http.StatusBadRequest, c)
 			return
 		}
 		if username != persistComment.OwnerRefer {
@@ -451,7 +442,7 @@ func AddRole(repo persist.UserRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		username := c.Param("username")
 		if username == "" {
-			c.Status(http.StatusInternalServerError)
+			c.Status(http.StatusBadRequest)
 			return
 		}
 		body, err := io.ReadAll(c.Request.Body)
@@ -475,7 +466,7 @@ func RemoveRole(repo persist.UserRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		username := c.Param("username")
 		if username == "" {
-			c.Status(http.StatusInternalServerError)
+			c.Status(http.StatusBadRequest)
 			return
 		}
 		body, err := io.ReadAll(c.Request.Body)
